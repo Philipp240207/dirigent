@@ -1,0 +1,480 @@
+{
+  "building_id": "ksw-12",
+  "address": "Kaiserswerther Strasse 12, 40477 Duesseldorf",
+  "year_built": 1908,
+  "type": "Altbau, 4 floors + cellar, 8 flats",
+  "infrastructure": {
+    "risers": [
+      {
+        "id": "riser_A",
+        "kind": "water_and_drain",
+        "connects": [
+          "4.1",
+          "3.1",
+          "2.1",
+          "1.1",
+          "cellar"
+        ],
+        "main_valve": "cellar, left wall behind door K1"
+      },
+      {
+        "id": "riser_B",
+        "kind": "water_and_drain",
+        "connects": [
+          "4.2",
+          "3.2",
+          "2.2",
+          "1.2",
+          "cellar"
+        ],
+        "main_valve": "cellar, right wall next to meter"
+      }
+    ],
+    "heating_loops": [
+      {
+        "id": "heat_west",
+        "connects": [
+          "4.1",
+          "3.1",
+          "2.1",
+          "1.1"
+        ],
+        "source": "gas boiler, cellar"
+      },
+      {
+        "id": "heat_east",
+        "connects": [
+          "4.2",
+          "3.2",
+          "2.2",
+          "1.2"
+        ],
+        "source": "gas boiler, cellar"
+      }
+    ],
+    "electric": [
+      {
+        "id": "main_panel",
+        "location": "cellar",
+        "feeds": [
+          "stairwell",
+          "cellar",
+          "1.1",
+          "1.2",
+          "2.1",
+          "2.2",
+          "3.1",
+          "3.2",
+          "4.1",
+          "4.2"
+        ]
+      }
+    ],
+    "access": {
+      "main_door_code": "4711#",
+      "key_safe": "cellar door, code 2580",
+      "cellar_key": "key safe"
+    }
+  },
+  "units": [
+    {
+      "id": "1.1",
+      "floor": 1,
+      "side": "west",
+      "sqm": 62,
+      "tenant_id": "t11",
+      "above": "2.1",
+      "below": "cellar"
+    },
+    {
+      "id": "1.2",
+      "floor": 1,
+      "side": "east",
+      "sqm": 58,
+      "tenant_id": "t12",
+      "above": "2.2",
+      "below": "cellar"
+    },
+    {
+      "id": "2.1",
+      "floor": 2,
+      "side": "west",
+      "sqm": 62,
+      "tenant_id": "t21",
+      "above": "3.1",
+      "below": "1.1"
+    },
+    {
+      "id": "2.2",
+      "floor": 2,
+      "side": "east",
+      "sqm": 58,
+      "tenant_id": "t22",
+      "above": "3.2",
+      "below": "1.2"
+    },
+    {
+      "id": "3.1",
+      "floor": 3,
+      "side": "west",
+      "sqm": 62,
+      "tenant_id": "t31",
+      "above": "4.1",
+      "below": "2.1"
+    },
+    {
+      "id": "3.2",
+      "floor": 3,
+      "side": "east",
+      "sqm": 58,
+      "tenant_id": "t32",
+      "above": "4.2",
+      "below": "2.2"
+    },
+    {
+      "id": "4.1",
+      "floor": 4,
+      "side": "west",
+      "sqm": 55,
+      "tenant_id": "t41",
+      "above": "roof",
+      "below": "3.1"
+    },
+    {
+      "id": "4.2",
+      "floor": 4,
+      "side": "east",
+      "sqm": 51,
+      "tenant_id": "t42",
+      "above": "roof",
+      "below": "3.2",
+      "internet_line_id": "DSL-4711-0042"
+    }
+  ],
+  "parties": {
+    "tenants": [
+      {
+        "id": "t11",
+        "name": "Klaus Becker",
+        "language": "de",
+        "phone_env": null,
+        "availability": "home all day, retired",
+        "notes": "hard of hearing, speak slowly",
+        "rent_arrears_eur": 0,
+        "share_with": {
+          "name": [
+            "plumber",
+            "electrician",
+            "owner"
+          ],
+          "availability": [
+            "plumber",
+            "electrician"
+          ],
+          "notes": [
+            "plumber",
+            "electrician"
+          ],
+          "rent_arrears_eur": [
+            "owner"
+          ]
+        }
+      },
+      {
+        "id": "t12",
+        "name": "Anna Kowalska",
+        "language": "pl",
+        "phone_env": null,
+        "availability": "weekdays after 17:00",
+        "notes": "",
+        "rent_arrears_eur": 0,
+        "share_with": {
+          "name": [
+            "plumber",
+            "electrician",
+            "owner"
+          ],
+          "availability": [
+            "plumber",
+            "electrician"
+          ],
+          "rent_arrears_eur": [
+            "owner"
+          ]
+        }
+      },
+      {
+        "id": "t21",
+        "name": "Stefan Krueger",
+        "language": "de",
+        "phone_env": "DEMO_PHONE_NEIGHBOUR",
+        "availability": "works night shifts, sleeps until 13:00",
+        "notes": "has a baby, flat has expensive wooden floor",
+        "rent_arrears_eur": 0,
+        "share_with": {
+          "name": [
+            "plumber",
+            "owner"
+          ],
+          "availability": [
+            "plumber"
+          ],
+          "notes": [
+            "plumber"
+          ],
+          "rent_arrears_eur": [
+            "owner"
+          ]
+        }
+      },
+      {
+        "id": "t22",
+        "name": "Omar Haddad",
+        "language": "ar",
+        "phone_env": null,
+        "availability": "flexible, works from home",
+        "notes": "",
+        "rent_arrears_eur": 0,
+        "share_with": {
+          "name": [
+            "plumber",
+            "electrician",
+            "owner"
+          ],
+          "availability": [
+            "plumber",
+            "electrician"
+          ],
+          "rent_arrears_eur": [
+            "owner"
+          ]
+        }
+      },
+      {
+        "id": "t31",
+        "name": "Daniel Brooks",
+        "language": "en",
+        "phone_env": null,
+        "availability": "home today until 18:00",
+        "notes": "",
+        "rent_arrears_eur": 620,
+        "share_with": {
+          "name": [
+            "plumber",
+            "owner"
+          ],
+          "availability": [
+            "plumber"
+          ],
+          "rent_arrears_eur": [
+            "owner"
+          ]
+        }
+      },
+      {
+        "id": "t32",
+        "name": "Jan de Vries",
+        "language": "nl",
+        "phone_env": null,
+        "availability": "weekends only, travels for work",
+        "notes": "",
+        "rent_arrears_eur": 0,
+        "share_with": {
+          "name": [
+            "plumber",
+            "electrician",
+            "owner"
+          ],
+          "availability": [
+            "plumber",
+            "electrician"
+          ],
+          "rent_arrears_eur": [
+            "owner"
+          ]
+        }
+      },
+      {
+        "id": "t41",
+        "name": "James Carter",
+        "language": "en",
+        "phone_env": null,
+        "availability": "mornings",
+        "notes": "student flat share, 3 people",
+        "rent_arrears_eur": 0,
+        "share_with": {
+          "name": [
+            "plumber",
+            "electrician",
+            "owner"
+          ],
+          "availability": [
+            "plumber",
+            "electrician"
+          ],
+          "rent_arrears_eur": [
+            "owner"
+          ]
+        }
+      },
+      {
+        "id": "t42",
+        "name": "Marta Rossi",
+        "language": "it",
+        "phone_env": null,
+        "availability": "afternoons",
+        "notes": "",
+        "rent_arrears_eur": 0,
+        "share_with": {
+          "name": [
+            "plumber",
+            "electrician",
+            "owner"
+          ],
+          "availability": [
+            "plumber",
+            "electrician"
+          ],
+          "rent_arrears_eur": [
+            "owner"
+          ]
+        },
+        "move_out": "2026-11-30"
+      }
+    ],
+    "owner": {
+      "id": "owner",
+      "name": "Rheinblick Wohnen GmbH, contact: Dr. Petra Hoffmann",
+      "language": "de",
+      "approval_limit_eur": 500,
+      "channel_in_demo": "message (outbox)"
+    },
+    "providers": [
+      {
+        "id": "plumber_krause",
+        "company": "Sanitaer Krause GmbH",
+        "contact": "Herr Krause",
+        "language": "de",
+        "handles": [
+          "water_leak",
+          "drain_blocked"
+        ],
+        "hourly_rate_eur": 75,
+        "emergency_surcharge_eur": 120,
+        "slots_today": [
+          "14:30",
+          "16:00",
+          "18:30"
+        ],
+        "role": "plumber",
+        "channel_in_demo": "browser (partner page)"
+      },
+      {
+        "id": "electrician",
+        "company": "Elektro Schmitz",
+        "contact": "Frau Schmitz",
+        "language": "de",
+        "handles": [
+          "power_outage",
+          "water_leak_near_electrics"
+        ],
+        "hourly_rate_eur": 70,
+        "emergency_surcharge_eur": 100,
+        "slots_today": [
+          "15:00",
+          "17:30"
+        ],
+        "role": "electrician"
+      },
+      {
+        "id": "heating",
+        "company": "Waermetechnik Rhein",
+        "contact": "Herr Yildiz",
+        "language": "de",
+        "handles": [
+          "heating_failure"
+        ],
+        "hourly_rate_eur": 80,
+        "emergency_surcharge_eur": 150,
+        "slots_today": [
+          "13:00",
+          "17:00"
+        ],
+        "role": "heating"
+      },
+      {
+        "id": "locksmith",
+        "company": "Schluesseldienst 24",
+        "contact": "Dispatch",
+        "language": "de",
+        "handles": [
+          "lockout"
+        ],
+        "hourly_rate_eur": 90,
+        "emergency_surcharge_eur": 80,
+        "slots_today": [
+          "any, 30 min"
+        ],
+        "role": "locksmith"
+      },
+      {
+        "id": "isp_rheinnet",
+        "company": "RheinNet Glasfaser GmbH (fictional)",
+        "contact": "Order desk",
+        "language": "de",
+        "handles": [
+          "move_in"
+        ],
+        "hourly_rate_eur": 0,
+        "emergency_surcharge_eur": 0,
+        "slots_today": [],
+        "role": "isp",
+        "note": "No connector yet: this partner is plugged in live in the demo"
+      }
+    ],
+    "incoming_tenants": [
+      {
+        "id": "t42n",
+        "name": "Lucas Laurent",
+        "language": "fr",
+        "unit": "4.2",
+        "move_in": "2026-12-01",
+        "phone_env": "DEMO_PHONE_NEWTENANT",
+        "previous_address": "Lyon, France",
+        "needs": [
+          "internet from day one"
+        ],
+        "share_with": {
+          "name": [
+            "isp",
+            "owner"
+          ],
+          "move_in": [
+            "isp"
+          ],
+          "phone": [
+            "isp"
+          ]
+        }
+      }
+    ]
+  },
+  "rules": [
+    "Water leak: affected units come from the riser. Directly below = high risk (call). Two or more floors below = low risk (message). Cellar = check during the plumber visit. Never invent extra parties.",
+    "Water leak near electrics (photo shows wet sockets or lamps): note it for the plumber. Electrician is a stage 3 extra.",
+    "Heating failure: everybody on the same heating loop is affected (stage 3 scenario).",
+    "Costs above owner.approval_limit_eur need owner approval (stage 3 extra). Below the limit the owner gets a message.",
+    "share_with lists ROLES (plumber, electrician, heating, locksmith, isp, owner), never partner IDs. Every provider and every connector has a role from roles_for_share_with. Fields without the partner's role in share_with are withheld.",
+    "Always contact a resident in their own language, with the same brand voice.",
+    "Every call starts by saying it is the digital assistant of the property management (AI disclosure).",
+    "Move-in: the incoming tenant gets internet live on move-in day. The ISP gets name, move-in date, unit, phone and the unit's internet_line_id, nothing else."
+  ],
+  "roles_for_share_with": [
+    "plumber",
+    "electrician",
+    "heating",
+    "locksmith",
+    "isp",
+    "owner"
+  ]
+}

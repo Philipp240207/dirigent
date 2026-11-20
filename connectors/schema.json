@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Dirigent connector",
+  "type": "object",
+  "required": [
+    "partner_id",
+    "role",
+    "category",
+    "mode",
+    "detect",
+    "handover",
+    "conversation",
+    "close_loop"
+  ],
+  "properties": {
+    "partner_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+$"
+    },
+    "role": {
+      "enum": [
+        "plumber",
+        "electrician",
+        "heating",
+        "locksmith",
+        "isp",
+        "owner"
+      ]
+    },
+    "category": {
+      "type": "string"
+    },
+    "mode": {
+      "enum": [
+        "deliver",
+        "sell"
+      ]
+    },
+    "detect": {
+      "type": "object",
+      "required": [
+        "events"
+      ],
+      "properties": {
+        "events": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "water_leak",
+              "drain_blocked",
+              "heating_failure",
+              "power_outage",
+              "lockout",
+              "move_in",
+              "move_out",
+              "annual_invoice"
+            ]
+          },
+          "minItems": 1
+        },
+        "conditions": {
+          "type": "string"
+        }
+      }
+    },
+    "handover": {
+      "type": "object",
+      "required": [
+        "required"
+      ],
+      "properties": {
+        "required": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "never": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "conversation": {
+      "type": "object",
+      "required": [
+        "channel",
+        "goal"
+      ],
+      "properties": {
+        "channel": {
+          "enum": [
+            "browser",
+            "phone",
+            "message"
+          ]
+        },
+        "agent": {
+          "enum": [
+            "partner_call",
+            "resident_call"
+          ]
+        },
+        "language": {
+          "enum": [
+            "en",
+            "de",
+            "fr"
+          ]
+        },
+        "goal": {
+          "type": "string"
+        }
+      }
+    },
+    "resident_contact": {
+      "type": "object",
+      "required": [
+        "channel",
+        "goal"
+      ],
+      "properties": {
+        "channel": {
+          "enum": [
+            "browser",
+            "phone",
+            "message"
+          ]
+        },
+        "agent": {
+          "enum": [
+            "partner_call",
+            "resident_call"
+          ]
+        },
+        "language": {
+          "enum": [
+            "en",
+            "de",
+            "fr"
+          ]
+        },
+        "goal": {
+          "type": "string"
+        }
+      }
+    },
+    "close_loop": {
+      "type": "object",
+      "required": [
+        "result_fields",
+        "write_to_property",
+        "notify"
+      ],
+      "properties": {
+        "result_fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "write_to_property": {
+          "enum": [
+            "maintenance_log",
+            "unit_record"
+          ]
+        },
+        "notify": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "tenant",
+              "affected_tenants",
+              "owner"
+            ]
+          }
+        },
+        "approval_over_eur": {
+          "type": "number"
+        }
+      }
+    },
+    "cost_rule": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}
