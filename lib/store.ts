@@ -102,6 +102,20 @@ export function saveNewCase(demoCase: DemoCase, inputs: NewEvent[]) {
   });
 }
 
+export function saveLeakTimeline(caseId: string, inputs: NewEvent[]): boolean {
+  const state = currentState();
+  if (!state.cases.some((item) => item.id === caseId && item.status === "open")) return false;
+
+  saveState({
+    ...state,
+    cases: state.cases.map((item) =>
+      item.id === caseId ? { ...item, status: "pending_approval" } : item,
+    ),
+    events: [...state.events, ...inputs.map(stampEvent)],
+  });
+  return true;
+}
+
 export function approvePlumberJob(caseId: string): "approved" | "missing" | "not_ready" {
   const state = currentState();
   const demoCase = state.cases.find((item) => item.id === caseId);
