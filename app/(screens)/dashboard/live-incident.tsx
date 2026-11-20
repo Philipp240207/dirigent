@@ -28,7 +28,16 @@ function callEntry(event: IncidentEvent) {
   }
 }
 
-export function LiveIncident({ unit, resolved, events }: { unit: string; resolved: boolean; events: IncidentEvent[] }) {
+export type WaterStatus = "off" | "restored"
+
+export function LiveIncident({ unit, resolved, events, onWaterStatus, waterBusy = false, disabled = false }: {
+  unit: string
+  resolved: boolean
+  events: IncidentEvent[]
+  onWaterStatus?: (status: WaterStatus) => void
+  waterBusy?: boolean
+  disabled?: boolean
+}) {
   const risks = new Map([[unit, "confirmed"]])
   for (const { kind, payload } of events) {
     // Earlier servers emitted the possible source in a reasoning event.
@@ -51,11 +60,26 @@ export function LiveIncident({ unit, resolved, events }: { unit: string; resolve
   const water = events.findLast(event => event.kind === "water_status_confirmed")?.payload.status
   const waterOff = water === "off"
   const shutoffRequested = events.some(event => event.kind === "water_shutoff_requested")
+  const plumberDone = events.some(event => event.kind === "result" && event.payload.partner_id === "plumber_krause")
+  const canConfirmOff = Boolean(onWaterStatus) && shutoffRequested && !water && !resolved
+  const canConfirmRestored = Boolean(onWaterStatus) && waterOff
   return <div className="live-incident">
     <IncidentSection unitRisk={id => risks.get(id) ?? ""} reportedUnit={unit} showLegend riserActive={!resolved && !waterOff} />
-    {(waterOff || water === "restored" || (!resolved && shutoffRequested)) && <p className="live-water-status">
-      {waterOff ? "Water shut-off confirmed" : water === "restored" ? "Water supply restored" : "Caretaker asked to shut off the water"}
-    </p>}
+    {(waterOff || water === "restored" || (!resolved && shutoffRequested)) && <div className="live-water-status">
+      <p role="status">
+        {waterOff ? (plumberDone ? "Caretaker asked to reopen the valve" : "Water shut-off confirmed")
+          : water === "restored" ? "Water supply restored" : "Caretaker asked to shut off the water"}
+      </p>
+      {canConfirmOff && <button type="button" className="secondary" disabled={waterBusy || disabled} onClick={() => onWaterStatus?.("off")}>
+        {waterBusy ? "Confirming…" : "Caretaker closed the valve"}
+      </button>}
+      {canConfirmRestored && <>
+        <button type="button" className="secondary" disabled={waterBusy || disabled || !plumberDone} aria-describedby={plumberDone ? undefined : "water-restore-note"} onClick={() => onWaterStatus?.("restored")}>
+          {waterBusy ? "Confirming…" : "Caretaker reopened the valve"}
+        </button>
+        {!plumberDone && <p id="water-restore-note">Available after the plumber reports the repair.</p>}
+      </>}
+    </div>}
     <div className="call-history">
       <h3>Resident calls</h3>
       {latest ? <>

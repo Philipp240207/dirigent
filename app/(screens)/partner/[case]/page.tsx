@@ -4,13 +4,16 @@ import { WorkForm } from "./work-form"
 import { notFound } from "next/navigation"
 import { electricJob, jobs } from "../jobs"
 import { PartnerJob } from "./partner-job"
+import { isPartnerId } from "../../../../client/partners"
+
+export const metadata = { title: "Partner job · Dirigent" }
 
 export default async function PartnerPage({ params, searchParams }: { params: Promise<{ case: string }>; searchParams: Promise<{ partner?: string }> }) {
   const { case: caseId } = await params
   const { partner = "plumber_krause" } = await searchParams
   if (process.env.NEXT_PUBLIC_MOCK !== "true") {
-    if (partner !== "plumber_krause") notFound()
-    const job = releasedJobs().find(item => item.id === caseId)
+    if (!isPartnerId(partner)) notFound()
+    const job = releasedJobs(partner).find(item => item.id === caseId)
     if (!job) return <section className="report-card"><LiveRefresh /><h1>Job unavailable</h1><p>Only approved jobs appear here.</p></section>
     const scheduled = job.status === "scheduled"
     const completed = job.status === "resolved"

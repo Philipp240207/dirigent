@@ -121,6 +121,8 @@ Emil's server keeps all state in memory and writes it to `data/state.json` (git-
 | `connector_drafted` | `{connector}` |
 | `connector_activated` | `{partner_id}` |
 | `cost` | `{total_eur, breakdown: {voice_eur, phone_eur, openai_eur}}` |
+| `water_shutoff_requested` | `{riser_id}`; the Dirigent asked the caretaker to close the riser valve |
+| `water_status_confirmed` | `{riser_id, status}`; status `off` or `restored`, actor `caretaker` |
 
 A case has one or more partner jobs (plumber, electrician). The case is `resolved` when every approved partner has reported a result.
 
@@ -135,6 +137,7 @@ A case has one or more partner jobs (plumber, electrician). The case is `resolve
 | `GET /api/partner-job?case_id=&partner_id=` | | `{case, partner_id, role, shared, withheld, briefing}`; error before approval |
 | `POST /api/cases/[id]/slot` | `{partner_id, slot}` | `{ok: true}` |
 | `POST /api/cases/[id]/result` | `{partner_id, cost_eur, work_description}` | `{ok: true}` |
+| `POST /api/cases/[id]/water-status` | `{status}`: `off` or `restored` | `{ok: true}`; the manager clicks it after the caretaker confirms the riser valve was closed or reopened. Writes `water_status_confirmed` and messages every flat on the riser. `restored` only after the plumber's result; otherwise `409` |
 | `POST /api/connectors/draft` | `{partner_text}` | `{connector}` |
 | `POST /api/connectors/activate` | `{connector, case_id}` | `{ok: true}`; if `case_id` is given, the new partner is proposed for that case right away |
 | `POST /api/events` | `{type: "move_in", unit_id, tenant_id, date}` | `{case_id}` (stage 3 only) |

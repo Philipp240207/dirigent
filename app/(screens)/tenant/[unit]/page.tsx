@@ -4,6 +4,8 @@ import buildingData from "../../../../data/building.json"
 import { demoReport } from "../../../../client/state"
 import { TenantReport } from "./tenant-report"
 
+export const metadata = { title: "Report a repair · Dirigent" }
+
 export default async function TenantPage({ params, searchParams }: {
   params: Promise<{ unit: string }>
   searchParams: Promise<{ building?: string | string[] }>
