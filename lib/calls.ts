@@ -5,10 +5,10 @@ import { estimateOpenAiEur } from "./cost";
 import { addEvent, getState, scheduleRetry, type NewEvent } from "./store";
 
 const apiBase = "https://api.elevenlabs.io/v1/convai";
-const greetings: Record<string, string> = {
-  de: "Guten Tag, hier ist die digitale Assistenz Ihrer Hausverwaltung. Über Ihrer Wohnung wurde ein Wasserschaden gemeldet. Sehen Sie bei sich gerade Wasser oder eine feuchte Stelle an der Decke oder an den Wänden?",
-  en: "Hello, this is the digital assistant of your property management. A water leak was reported above your flat. Do you see any water or a wet spot on your ceiling or walls right now?",
-  fr: "Bonjour, ici l'assistant numérique de votre gestion immobilière. Une fuite d'eau a été signalée au-dessus de votre logement. Voyez-vous de l'eau ou une tache humide au plafond ou sur les murs en ce moment ?",
+const languageNames: Record<string, string> = {
+  de: "German",
+  en: "English",
+  fr: "French",
 };
 
 export type ResidentCall = {
@@ -125,13 +125,13 @@ export async function startResidentCall(call: ResidentCall, attempt = 1) {
   const agentId = process.env.ELEVENLABS_AGENT_RESIDENT_CALL?.trim();
   const phoneId = process.env.ELEVENLABS_PHONE_NUMBER_ID?.trim();
   const number = call.phoneEnv ? process.env[call.phoneEnv]?.trim() : undefined;
-  const greeting = Object.hasOwn(greetings, call.language) ? greetings[call.language] : undefined;
-  if (!apiKey || !agentId || !phoneId || !number || !/^\+[1-9]\d{6,14}$/.test(number) || !greeting) {
+  const languageName = Object.hasOwn(languageNames, call.language) ? languageNames[call.language] : undefined;
+  if (!apiKey || !agentId || !phoneId || !number || !/^\+[1-9]\d{6,14}$/.test(number) || !languageName) {
     explain("Live resident call skipped. Check the resident’s configured demo number, agent language and ElevenLabs settings.");
     return;
   }
 
-  const details = `${call.purpose} The water on the riser is off for now. A plumber is being arranged; the property management will let the resident know when he comes.`;
+  const details = "Water damage was just found in the flat above. The caretaker has been informed and is on his way to turn off the water on the riser so no more damage occurs. A plumber is being arranged.";
   const headers = { "xi-api-key": apiKey, "Content-Type": "application/json" };
   try {
     const response = await fetch(`${apiBase}/twilio/outbound-call`, {
@@ -147,10 +147,10 @@ export async function startResidentCall(call: ResidentCall, attempt = 1) {
             resident_name: call.name,
             purpose: "Warn the resident about possible water intrusion.",
             details: attempt === 1 ? details : `${details} A message was sent after the previous call.`,
-            language: call.language,
+            language: languageName,
           },
           conversation_config_override: {
-            agent: { language: call.language, first_message: greeting },
+            agent: { language: call.language },
           },
         },
       }),
