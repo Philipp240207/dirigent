@@ -9,6 +9,14 @@ import { demoReport, saveReplayTime, hasResidentReport, subscribeDemoSession } f
 import { PhotoCamera } from "./photo-camera"
 import { VoiceCall } from "../../voice-call"
 
+const languageNames: Record<string, string> = {
+  en: "English", de: "German", fr: "French", nl: "Dutch", it: "Italian", pl: "Polish", ar: "Arabic",
+}
+
+function languageName(code: string) {
+  return languageNames[code] ?? code
+}
+
 export function TenantReport({ unit, building, canSimulate, liveResident }: {
   unit: string
   building: Building
@@ -47,7 +55,8 @@ export function TenantReport({ unit, building, canSimulate, liveResident }: {
     const request = fetch("/api/cases", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ unit_id: unit, description, tenant_language: liveResident?.language ?? "en" }),
+      // tenant_language is required by POST /api/cases; building_id is sent for the record.
+      body: JSON.stringify({ building_id: building.id, unit_id: unit, description, tenant_language: liveResident?.language ?? "en" }),
     }).then(async response => {
       if (!response.ok) throw new Error()
       const result = await response.json()
@@ -164,7 +173,7 @@ export function TenantReport({ unit, building, canSimulate, liveResident }: {
             <button className="call-button" type="button" onClick={() => saveReplayTime(0)}>Simulate call</button>
           </>
         ) : !mock && liveResident ? (
-          !voiceStarted && <div className="written-report">
+          <div className="written-report">
             <form onSubmit={submitReport}>
               <label>Describe the water leak<textarea name="description" rows={3} required /></label>
               <button type="submit" disabled={submitting}>{submitting ? "Sending…" : "Send written report"}</button>
@@ -172,17 +181,22 @@ export function TenantReport({ unit, building, canSimulate, liveResident }: {
           </div>
         ) : <p>There is no active repair scenario for this apartment in the demo.</p>}
         {!mock && liveResident?.agentId && (!reported || voiceStarted) && (
-          voiceStarted
-            ? <VoiceCall agentId={liveResident.agentId} startLabel="Start voice report"
-              dynamicVariables={{ unit_id: unit, tenant_name: liveResident.name, language: liveResident.language }}
-              clientTools={{
-                create_case: async ({ description }) => {
-                  if (typeof description !== "string" || !description.trim()) throw new Error("A description is required.")
-                  return JSON.stringify({ case_id: await createCase(description) })
-                },
-              }}
-              onClosed={() => setVoiceStarted(false)} />
-            : <button className="call-button" type="button" disabled={submitting} onClick={() => setVoiceStarted(true)}>Use voice report</button>
+          <VoiceCall agentId={liveResident.agentId} startLabel="Talk to your property manager"
+            language={liveResident.language}
+            dynamicVariables={{ unit_id: unit, tenant_name: liveResident.name, language: languageName(liveResident.language) }}
+            clientTools={{
+              create_case: async ({ description }) => {
+                if (typeof description !== "string" || !description.trim()) return "No description given. Ask the resident what happened."
+                // Keep the call mounted once the report exists, so the conversation continues.
+                setVoiceStarted(true)
+                try {
+                  await createCase(description.trim())
+                  return "Case created"
+                } catch {
+                  return "Case could not be created. Ask the resident to use the written form."
+                }
+              },
+            }} />
         )}
         {reportError && <p role="alert">{reportError}</p>}
       </section>

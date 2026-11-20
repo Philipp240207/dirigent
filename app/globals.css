@@ -572,3 +572,17 @@ summary:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
 .connector-checks li::before { content: "✓"; position: absolute; left: 0; color: #2f7d4f; font-weight: 700; }
 .connector-checks li[data-check="warn"]::before { content: "!"; color: #b25d1a; }
 .live-connector-status { margin-block: .8rem; font-weight: 600; }
+
+/* Partner voice agent: incoming call */
+.incoming-call { margin-block: 1rem; padding: 1.25rem 1rem; border-radius: 14px; background: #1f2a24; color: #f4f1ea; text-align: center; }
+.incoming-call p { margin: .2rem 0; color: #f4f1ea; }
+.incoming-call[data-state="declined"] p { color: inherit; }
+.incoming-label { font-size: .85rem; letter-spacing: .02em; opacity: .8; }
+.incoming-caller { font-size: 1.25rem; font-weight: 700; }
+.incoming-topic { font-size: .95rem; opacity: .9; }
+.incoming-actions { display: flex; justify-content: center; gap: 1rem; margin-top: 1rem; }
+.incoming-actions button { min-width: 8rem; min-height: 48px; border-radius: 24px; color: #fff; font-weight: 600; }
+.incoming-actions .accept { background: #34C759; }
+.incoming-actions .decline { background: #FF3B30; }
+.incoming-call[data-state="declined"] { background: #fffdf8; color: inherit; border: 1px solid #e2ddd2; }
+.incoming-call [role="alert"] { margin-top: .75rem; color: #ffd7d3; }
