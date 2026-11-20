@@ -7,7 +7,7 @@ import "maplibre-gl/dist/maplibre-gl.css"
 import type { Building } from "../../../client/buildings"
 import { portfolioMapStyle } from "./portfolio-map-style"
 
-export type MapState = "clear" | "attention" | "scheduled" | "completed"
+export type MapState = "clear" | "attention" | "approval" | "scheduled" | "completed"
 
 type Location = { building: Building; status: string; state: MapState }
 
@@ -22,6 +22,7 @@ const trackpadPinchSpeed = 5
 
 const legend: { state: MapState; label: string }[] = [
   { state: "attention", label: "Open case" },
+  { state: "approval", label: "Awaiting approval" },
   { state: "scheduled", label: "Scheduled" },
   { state: "completed", label: "Repaired" },
   { state: "clear", label: "No case" },
@@ -95,6 +96,7 @@ export function PortfolioMap({ locations, onSelect }: {
         minZoom: 10,
         maxZoom: 19,
       })
+      instance.zoomControl.setPosition("bottomleft")
       const bounds = L.latLngBounds(Object.values(demoCoordinates))
       resetView.current = () => instance?.fitBounds(bounds, { padding: [42, 51], maxZoom: 15, animate: false })
       resetView.current()

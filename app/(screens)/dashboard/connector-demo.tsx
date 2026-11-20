@@ -20,9 +20,7 @@ export function ConnectorDemo({ elapsed, text, onTextChange, onDraft, onActivate
   const callStarted = replay.some((event) => event.kind === "call_started")
 
   return (
-    <details className="building-disclosure" id="connector-panel">
-      <summary>Connectors{active && <span>RheinNet active</span>}</summary>
-      <div className="building-disclosure-content connector-demo">
+    <section className="workspace-feed connector-demo">
         <h2>RheinNet Glasfaser</h2>
         {!drafted ? (
           <form onSubmit={(event) => {
@@ -56,7 +54,6 @@ export function ConnectorDemo({ elapsed, text, onTextChange, onDraft, onActivate
             </div>
           </>
         )}
-      </div>
-    </details>
+    </section>
   )
 }

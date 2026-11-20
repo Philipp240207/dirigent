@@ -1,13 +1,16 @@
 "use client"
 
+import { HomeLink } from "../../home-link"
 import Link from "next/link"
-import { useEffect, useState } from "react"
+import { buildingPortrait } from "../../../../client/buildings"
+import { useEffect, useState, useSyncExternalStore } from "react"
 import type { Building } from "../../../../client/buildings"
-import { demoReport } from "../../../../client/state"
+import { demoReport, saveReplayTime, hasResidentReport, subscribeDemoSession } from "../../../../client/state"
 import { PhotoCamera } from "./photo-camera"
 
 export function TenantReport({ unit, building, canSimulate }: { unit: string; building: Building; canSimulate: boolean }) {
-  const [reported, setReported] = useState(false)
+  const activeReport = useSyncExternalStore(subscribeDemoSession, hasResidentReport, () => false)
+  const reported = canSimulate && activeReport
   const [photo, setPhoto] = useState<File | null>(null)
   const [preview, setPreview] = useState("")
   const [error, setError] = useState("")
@@ -28,11 +31,12 @@ export function TenantReport({ unit, building, canSimulate }: { unit: string; bu
   return (
     <main className="tenant-page">
       <header className="topbar">
-        <strong className="wordmark"><span className="wordmark-icon" aria-hidden="true" />Dirigent</strong>
-        <span className="mode">Local demo</span>
+        <HomeLink href={`/tenant/${unit}?building=${building.id}`} />
+        <span className="mode">Resident portal</span>
       </header>
-      <div className="heading"><h1>Report a repair</h1></div>
+      <div className="heading"><h1>{reported ? "Your repair" : "Report a repair"}</h1></div>
       <div className="tenant-location" aria-label="Your apartment">
+          <img src={buildingPortrait(building)} width="72" height="76" alt="" />
         <div><strong>{building.address}</strong><p>{building.city}</p></div>
         <span>Apartment {unit}</span>
       </div>
@@ -40,9 +44,10 @@ export function TenantReport({ unit, building, canSimulate }: { unit: string; bu
         <h2 id="report-heading" role={reported ? "status" : undefined}>{reported ? "Water leak reported" : canSimulate ? "Talk to your property assistant" : "Repair requests"}</h2>
         {reported ? (
           <>
-            <p>{demoReport.payload.description}.</p>
-            <div className="report-photo">
-              <h3>{photo ? "Damage photo" : "Add a damage photo"}</h3>
+            <p>Your property manager has received your report about the leak by the ceiling lamp.</p>
+            <Link className="primary-link" href={`/track/${demoReport.case_id}`}>Track this repair</Link>
+            <details className="report-photo" onToggle={event => { if (!event.currentTarget.open) setCameraOpen(false) }}>
+              <summary>{photo ? "Damage photo attached" : "Add a photo (optional)"}</summary>
               {photo && preview && !cameraOpen && (
                 <div className="photo-attachment">
                   <img className="damage-preview" src={preview} alt="Damage photo preview" />
@@ -87,19 +92,18 @@ export function TenantReport({ unit, building, canSimulate }: { unit: string; bu
               </div>
               <p id="photo-note">The photo stays on this device. The demo uses its sample assessment.</p>
               {error && <p role="alert">{error}</p>}
-            </div>
-            <div className="repair-links">
-              <Link className="action-link" href={`/track/${demoReport.case_id}`}>Track this repair</Link>
-              <Link className="action-link" href={`/dashboard?report=${demoReport.case_id}`}>Open dashboard demo</Link>
-            </div>
+            </details>
           </>
         ) : canSimulate ? (
           <>
             <p>Simulate Daniel’s call to report a leak from the living room ceiling.</p>
-            <button className="call-button" type="button" onClick={() => setReported(true)}>Simulate call</button>
+            <button className="call-button" type="button" onClick={() => saveReplayTime(0)}>Simulate call</button>
           </>
         ) : <p>There is no active repair scenario for this apartment in the local demo.</p>}
       </section>
+      {reported && <details className="demo-views"><summary>Demo views</summary><div>
+        <Link href={`/dashboard?report=${demoReport.case_id}`}>Property manager</Link>
+      </div></details>}
     </main>
   )
 }

@@ -1,0 +1,73 @@
+{
+  "connector": {
+    "partner_id": "electrician_schmitz",
+    "role": "electrician",
+    "category": "repairs",
+    "mode": "deliver",
+    "detect": {
+      "events": [
+        "water_leak_near_electrics",
+        "power_outage"
+      ],
+      "conditions": "photo assessment electrics = true"
+    },
+    "handover": {
+      "required": [
+        "address",
+        "unit_id",
+        "caretaker_contact",
+        "damage_photo",
+        "damage_assessment",
+        "tenant_availability"
+      ],
+      "never": [
+        "rent_arrears_eur",
+        "key_safe"
+      ]
+    },
+    "conversation": {
+      "channel": "browser",
+      "agent": "partner_call",
+      "language": "de",
+      "goal": "confirm the earliest slot to check the ceiling lamp and wiring, ideally together with the plumber"
+    },
+    "close_loop": {
+      "result_fields": [
+        "slot",
+        "cost_eur",
+        "work_description"
+      ],
+      "write_to_property": "maintenance_log",
+      "notify": [
+        "tenant",
+        "owner"
+      ],
+      "approval_over_eur": 500
+    },
+    "cost_rule": "voice only if urgent, language barrier or new resident without portal; otherwise message"
+  },
+  "proposal": {
+    "partner_id": "electrician_schmitz",
+    "role": "electrician",
+    "shared": {
+      "address": "Kaiserswerther Strasse 12, 40477 Duesseldorf",
+      "unit_id": "3.1",
+      "caretaker_contact": "Hausmeister Peter Wolf (has keys)",
+      "damage_photo": "/mock/demo-ceiling.jpg",
+      "damage_assessment": "water next to the ceiling lamp",
+      "tenant_availability": "Daniel Brooks: home today until 18:00, otherwise the caretaker opens"
+    },
+    "withheld": [
+      "rent_arrears_eur",
+      "key_safe",
+      "notes"
+    ],
+    "briefing": "Water came through the ceiling next to the living-room lamp in 3.1. Please check lamp and wiring, ideally together with the plumber."
+  },
+  "slot": "16:00",
+  "result": {
+    "partner_id": "electrician_schmitz",
+    "cost_eur": 120,
+    "work_description": "Ceiling lamp removed, socket box dried and tested, safe."
+  }
+}
