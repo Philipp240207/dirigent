@@ -5,9 +5,9 @@ import { addEvent, getState, scheduleRetry, type NewEvent } from "./store";
 
 const apiBase = "https://api.elevenlabs.io/v1/convai";
 const greetings: Record<string, string> = {
-  de: "Guten Tag, hier ist die digitale Assistenz Ihrer Hausverwaltung. Über Ihrer Wohnung wurde ein Wasserschaden gemeldet.",
-  en: "Hello, this is the digital assistant for your property manager. A water leak was reported above your apartment.",
-  fr: "Bonjour, je suis l’assistant numérique de votre gestionnaire immobilier. Une fuite a été signalée au-dessus de votre logement.",
+  de: "Guten Tag, hier ist die digitale Assistenz Ihrer Hausverwaltung. Über Ihrer Wohnung wurde ein Wasserschaden gemeldet. Sehen Sie bei sich gerade Wasser oder eine feuchte Stelle an der Decke oder an den Wänden?",
+  en: "Hello, this is the digital assistant of your property management. A water leak was reported above your flat. Do you see any water or a wet spot on your ceiling or walls right now?",
+  fr: "Bonjour, ici l'assistant numérique de votre gestion immobilière. Une fuite d'eau a été signalée au-dessus de votre logement. Voyez-vous de l'eau ou une tache humide au plafond ou sur les murs en ce moment ?",
 };
 
 export type ResidentCall = {
@@ -127,6 +127,7 @@ export async function startResidentCall(call: ResidentCall, attempt = 1) {
     return;
   }
 
+  const details = `${call.purpose} The water on the riser is off for now. A plumber is being arranged; the property management will let the resident know when he comes.`;
   const headers = { "xi-api-key": apiKey, "Content-Type": "application/json" };
   try {
     const response = await fetch(`${apiBase}/twilio/outbound-call`, {
@@ -141,7 +142,7 @@ export async function startResidentCall(call: ResidentCall, attempt = 1) {
           dynamic_variables: {
             resident_name: call.name,
             purpose: "Warn the resident about possible water intrusion.",
-            details: attempt === 1 ? call.purpose : `${call.purpose} A message was sent after the previous call.`,
+            details: attempt === 1 ? details : `${details} A message was sent after the previous call.`,
             language: call.language,
           },
           conversation_config_override: {

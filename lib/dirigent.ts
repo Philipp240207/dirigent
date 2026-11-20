@@ -7,12 +7,20 @@ import type { DemoCase, NewEvent } from "./store";
 export function buildLeakTimeline(demoCase: DemoCase, description: string) {
   const { id, unit_id, type } = demoCase;
   const ceilingLeak = /\b(?:ceiling|zimmerdecke|decke|plafond)\b/i.test(description);
-  const { affected, likelySource } = findAffectedUnits(unit_id, type, { ceilingLeak });
+  const { affected, likelySource, riser } = findAffectedUnits(unit_id, type, { ceilingLeak });
   const events: NewEvent[] = [];
   const residentCalls: ResidentCall[] = [];
   const record = (kind: string, payload: NewEvent["payload"]) => {
     events.push({ case_id: id, kind, actor: "dirigent", payload });
   };
+
+  if (riser && type === "water_leak") {
+    record("water_shutoff_requested", { riser_id: riser.id });
+    record("message", {
+      to: "caretaker",
+      text: `Please close the main valve for ${riser.id} at ${riser.main_valve} and confirm once it is closed.`,
+    });
+  }
 
   for (const unit of affected) {
     record("affected", unit);
