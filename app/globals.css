@@ -600,3 +600,6 @@ summary:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
 /* Caretaker water shut-off line on the review card and after approval */
 .caretaker-line { margin: .3rem 0; }
 .caretaker-note { margin-block: .8rem; padding: .6rem .8rem; border-radius: 10px; background: #eaf2fb; border: 1px solid #c7dbf2; font-weight: 600; }
+
+/* Partner page while the server calls the plumber's phone */
+.phone-dispatch .incoming-caller { font-size: 1.1rem; }
