@@ -1,4 +1,4 @@
-import fixture from "../fixtures/demo-events.json"
+import fixture from "./screen-replay.json"
 
 const demoEvents = fixture.events
 export const demoReport = demoEvents.find((event) => event.kind === "case_created" && event.payload.type === "water_leak")!

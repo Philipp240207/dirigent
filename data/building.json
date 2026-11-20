@@ -71,9 +71,9 @@
       }
     ],
     "access": {
+      "caretaker": "Hausmeister Peter Wolf has keys to all flats and the cellar",
       "main_door_code": "4711#",
-      "key_safe": "cellar door, code 2580",
-      "cellar_key": "key safe"
+      "key_safe": "cellar door, code 2580 (never shared with partners)"
     }
   },
   "units": [
@@ -214,10 +214,12 @@
         "share_with": {
           "name": [
             "plumber",
+            "electrician",
             "owner"
           ],
           "availability": [
-            "plumber"
+            "plumber",
+            "electrician"
           ],
           "notes": [
             "plumber"
@@ -255,16 +257,18 @@
         "name": "Daniel Brooks",
         "language": "en",
         "phone_env": null,
-        "availability": "home today until 18:00",
+        "availability": "home today until 18:00, otherwise the caretaker can open",
         "notes": "",
         "rent_arrears_eur": 620,
         "share_with": {
           "name": [
             "plumber",
+            "electrician",
             "owner"
           ],
           "availability": [
-            "plumber"
+            "plumber",
+            "electrician"
           ],
           "rent_arrears_eur": [
             "owner"
@@ -370,23 +374,6 @@
         "channel_in_demo": "browser (partner page)"
       },
       {
-        "id": "electrician",
-        "company": "Elektro Schmitz",
-        "contact": "Frau Schmitz",
-        "language": "de",
-        "handles": [
-          "power_outage",
-          "water_leak_near_electrics"
-        ],
-        "hourly_rate_eur": 70,
-        "emergency_surcharge_eur": 100,
-        "slots_today": [
-          "15:00",
-          "17:30"
-        ],
-        "role": "electrician"
-      },
-      {
         "id": "heating",
         "company": "Waermetechnik Rhein",
         "contact": "Herr Yildiz",
@@ -429,7 +416,7 @@
         "emergency_surcharge_eur": 0,
         "slots_today": [],
         "role": "isp",
-        "note": "No connector yet: this partner is plugged in live in the demo"
+        "note": "Stage 3 only. Example connector: docs/examples/isp_rheinnet.json"
       }
     ],
     "incoming_tenants": [
@@ -457,17 +444,39 @@
           ]
         }
       }
-    ]
+    ],
+    "caretaker": {
+      "id": "caretaker",
+      "name": "Hausmeister Peter Wolf",
+      "language": "de",
+      "has_keys": true,
+      "available": "weekdays 8:00 to 17:00",
+      "share_with": {
+        "name": [
+          "plumber",
+          "electrician",
+          "isp"
+        ],
+        "phone": [
+          "plumber",
+          "electrician",
+          "isp"
+        ]
+      }
+    },
+    "_providers_note": "Reference data only (who plays which partner, slots, rates). The Dirigent model never gets this list: a partner exists for it only as an active connector. Elektro Schmitz is not listed here because it is plugged in live."
   },
   "rules": [
-    "Water leak: affected units come from the riser. Directly below = high risk (call). Two or more floors below = low risk (message). Cellar = check during the plumber visit. Never invent extra parties.",
-    "Water leak near electrics (photo shows wet sockets or lamps): note it for the plumber. Electrician is a stage 3 extra.",
-    "Heating failure: everybody on the same heating loop is affected (stage 3 scenario).",
-    "Costs above owner.approval_limit_eur need owner approval (stage 3 extra). Below the limit the owner gets a message.",
-    "share_with lists ROLES (plumber, electrician, heating, locksmith, isp, owner), never partner IDs. Every provider and every connector has a role from roles_for_share_with. Fields without the partner's role in share_with are withheld.",
-    "Always contact a resident in their own language, with the same brand voice.",
-    "Every call starts by saying it is the digital assistant of the property management (AI disclosure).",
-    "Move-in: the incoming tenant gets internet live on move-in day. The ISP gets name, move-in date, unit, phone and the unit's internet_line_id, nothing else."
+    "Water leak from the ceiling: the flat directly above on the same riser is the possible source (risk source: message asking them to check sinks, bath and washing machine). The flat directly below is high risk (risk high: phone call asking whether they see water damage). Flats further down the same riser and the cellar: risk check, added to the plumber job. Never invent other parties.",
+    "Shut off the water: for a leak on a riser, message the caretaker right away to close that riser's main valve (give the location from infrastructure.risers[].main_valve) and message every flat on that riser that the water is off until the plumber is done. When the plumber reports the result, message the same flats that the water is back on.",
+    "Neighbour call outcome: damage found -> risk confirmed, the unit is added to the plumber job. No damage -> risk clear. No answer or voicemail -> message right away, retry the call after RETRY_DELAY_MINUTES, at most 2 retries; after the last failed retry the caretaker gets a message to check the flat.",
+    "Photo shows water near electrics (sockets, lamps): the job also needs the role electrician. If no electrician connector is active, Dirigent says so in the reasoning and the property manager can plug one in.",
+    "Every partner job needs the property manager's approval (Approve and send) before the partner sees anything.",
+    "Access: the caretaker has keys and opens the flat if the tenant is not home. Partners get the caretaker's name and phone, never the key safe code.",
+    "Costs above owner.approval_limit_eur need owner approval (stage 3). Below the limit the owner gets a message.",
+    "share_with lists ROLES (plumber, electrician, heating, locksmith, isp, owner), never partner IDs. Fields without the partner's role in share_with are withheld. Sharing is an allowlist: a field without share_with (for example main_door_code) is never shared.",
+    "Always contact a resident in their own language. Every call starts by saying it is the digital assistant of the property management (AI disclosure).",
+    "Move-in with internet (stage 3 only): the ISP gets name, move-in date, unit, phone and the unit's internet_line_id."
   ],
   "roles_for_share_with": [
     "plumber",

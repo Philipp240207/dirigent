@@ -1,6 +1,6 @@
 import building from "../data/building.json";
 import { findAffectedUnits } from "./building";
-import { isCallDryRun, simulatedCallEvents, type ResidentCall } from "./calls";
+import { type ResidentCall } from "./calls";
 import { buildPlumberProposal } from "./contextPass";
 import type { DemoCase, NewEvent } from "./store";
 
@@ -9,7 +9,7 @@ export function buildLeakTimeline(demoCase: DemoCase, description: string) {
   const ceilingLeak = /\b(?:ceiling|zimmerdecke|decke|plafond)\b/i.test(description);
   const { affected, likelySource } = findAffectedUnits(unit_id, type, { ceilingLeak });
   const events: NewEvent[] = [];
-  const liveCalls: ResidentCall[] = [];
+  const residentCalls: ResidentCall[] = [];
   const record = (kind: string, payload: NewEvent["payload"]) => {
     events.push({ case_id: id, kind, actor: "dirigent", payload });
   };
@@ -34,18 +34,14 @@ export function buildLeakTimeline(demoCase: DemoCase, description: string) {
     const call: ResidentCall = {
       caseId: id,
       tenantId: resident.id,
+      unitId: unit.unit_id,
       name: resident.name,
       language: resident.language,
       phoneEnv: resident.phone_env,
       purpose,
     };
-    if (isCallDryRun()) {
-      record("reasoning", { text: `Calling ${unit.unit_id} in dry-run mode. ${purpose}` });
-      events.push(...simulatedCallEvents(call));
-    } else {
-      record("reasoning", { text: `Queuing a resident call to ${unit.unit_id}. ${purpose}` });
-      liveCalls.push(call);
-    }
+    record("reasoning", { text: `Queuing a resident call to ${unit.unit_id}. ${purpose}` });
+    residentCalls.push(call);
   }
 
   if (likelySource) {
@@ -66,5 +62,5 @@ export function buildLeakTimeline(demoCase: DemoCase, description: string) {
   ));
   record("status_change", { status: "pending_approval" });
 
-  return { events, liveCalls };
+  return { events, residentCalls };
 }

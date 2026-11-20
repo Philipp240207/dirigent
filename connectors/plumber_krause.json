@@ -14,14 +14,15 @@
     "required": [
       "address",
       "unit_id",
-      "access_info",
+      "caretaker_contact",
       "damage_photo",
       "damage_assessment",
       "tenant_availability",
       "affected_units"
     ],
     "never": [
-      "rent_arrears_eur"
+      "rent_arrears_eur",
+      "key_safe"
     ]
   },
   "conversation": {

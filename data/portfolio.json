@@ -1,0 +1,78 @@
+{
+  "_comment": "Buildings for the map and list on /dashboard. Only ksw-12 has real data (data/building.json); the others are scenery. x and y are positions in percent on the stylised Duesseldorf map (0,0 = top left).",
+  "city": "Duesseldorf",
+  "buildings": [
+    {
+      "id": "ksw-12",
+      "name": "Kaiserswerther Strasse 12",
+      "district": "Golzheim",
+      "units": 8,
+      "x": 46,
+      "y": 30,
+      "real": true
+    },
+    {
+      "id": "rhe-48",
+      "name": "Rheinallee 48",
+      "district": "Oberkassel",
+      "units": 12,
+      "x": 30,
+      "y": 40,
+      "real": false
+    },
+    {
+      "id": "bil-7",
+      "name": "Bilker Allee 7",
+      "district": "Bilk",
+      "units": 10,
+      "x": 44,
+      "y": 68,
+      "real": false
+    },
+    {
+      "id": "flg-21",
+      "name": "Flinger Strasse 21",
+      "district": "Altstadt",
+      "units": 6,
+      "x": 49,
+      "y": 52,
+      "real": false
+    },
+    {
+      "id": "ack-115",
+      "name": "Ackerstrasse 115",
+      "district": "Flingern",
+      "units": 14,
+      "x": 62,
+      "y": 48,
+      "real": false
+    },
+    {
+      "id": "deu-33",
+      "name": "Derendorfer Allee 33",
+      "district": "Derendorf",
+      "units": 9,
+      "x": 55,
+      "y": 36,
+      "real": false
+    },
+    {
+      "id": "kon-4",
+      "name": "Konkordiastrasse 4",
+      "district": "Unterbilk",
+      "units": 11,
+      "x": 40,
+      "y": 60,
+      "real": false
+    },
+    {
+      "id": "gra-88",
+      "name": "Grafenberger Allee 88",
+      "district": "Flingern",
+      "units": 16,
+      "x": 68,
+      "y": 42,
+      "real": false
+    }
+  ]
+}
