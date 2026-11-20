@@ -40,6 +40,19 @@ function openProposals(state: State, caseId: string) {
   })
 }
 
+// What the manager should see per released partner: waiting for the call, the confirmed visit, or the result.
+function partnerProgress(state: State, caseId: string, partnerId: string) {
+  const own = state.events.filter(event => event.case_id === caseId &&
+    (event.payload.partner_id === partnerId || (partnerId === "plumber_krause" && event.payload.partner_id == null)))
+  const slot = own.findLast(event => event.kind === "slot_confirmed")?.payload.slot
+  const result = own.findLast(event => event.kind === "result")?.payload
+  return {
+    slot: typeof slot === "string" ? slot : "",
+    cost: typeof result?.cost_eur === "number" ? result.cost_eur : null,
+    done: Boolean(result),
+  }
+}
+
 function releasedPartners(state: State, caseId: string) {
   return [...new Set(state.events.flatMap(event => event.case_id === caseId && event.kind === "partner_job" &&
     typeof event.payload.partner_id === "string" ? [event.payload.partner_id] : []))]
@@ -217,6 +230,21 @@ export function LiveDashboard() {
             <button className="case-action" disabled={Boolean(busy) || offline || blocked} onClick={() => approve(item.id, partnerId, proposal.id)}>
               {busy === `approve:${item.id}:${partnerId}` ? "Sending…" : "Approve and send"}
             </button>
+          </div>
+        })}
+        {released.map(partnerId => {
+          const progress = partnerProgress(state!, item.id, partnerId)
+          const name = partnerName(partnerId)
+          return <div className="partner-progress" key={partnerId} data-step={progress.done ? "done" : progress.slot ? "scheduled" : "calling"}>
+            {progress.done ? <p><strong>{name}</strong> reported the repair complete{progress.cost !== null ? ` · €${progress.cost}` : ""}.</p>
+              : progress.slot ? <>
+                <p><strong>{name}</strong> visits at <strong>{progress.slot}</strong>.</p>
+                <p>The caretaker lets them in. Residents and the caretaker were notified.</p>
+              </>
+              : <>
+                <p>Dirigent is calling <strong>{name}</strong> to agree on a visit.</p>
+                <Link className="case-action partner-call-link" href={`/partner/${item.id}?partner=${encodeURIComponent(partnerId)}`}>Open {name}’s phone</Link>
+              </>}
           </div>
         })}
         {displayed === item.id ? <LiveIncident unit={item.unit_id} resolved={item.status === "resolved"} events={events}

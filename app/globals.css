@@ -586,3 +586,13 @@ summary:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
 .incoming-actions .decline { background: #FF3B30; }
 .incoming-call[data-state="declined"] { background: #fffdf8; color: inherit; border: 1px solid #e2ddd2; }
 .incoming-call [role="alert"] { margin-top: .75rem; color: #ffd7d3; }
+
+/* Tenant report draft (sent after the call) and manager's partner progress */
+.report-draft h3 { margin: 0 0 .4rem; }
+.report-draft blockquote { margin: 0 0 .75rem; padding: .6rem .8rem; border-left: 3px solid #c9d6cc; background: #f4f1ea; border-radius: 6px; }
+.report-draft > button { margin-top: .75rem; }
+.report-draft > button.secondary { margin-left: .5rem; }
+.partner-progress { margin-block: 1rem; padding: .9rem 1rem; border-radius: 12px; background: #eef4ef; border: 1px solid #cfe0d3; }
+.partner-progress p { margin: .2rem 0; }
+.partner-progress[data-step="calling"] { background: #fff6e8; border-color: #f0d9b0; }
+.partner-call-link { display: inline-block; margin-top: .6rem; padding: .7rem 1rem; color: #fff; text-decoration: none; font-weight: 600; min-height: 44px; }

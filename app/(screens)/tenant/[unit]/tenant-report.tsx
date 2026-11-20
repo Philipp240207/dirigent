@@ -30,7 +30,10 @@ export function TenantReport({ unit, building, canSimulate, liveResident }: {
   const [reportError, setReportError] = useState("")
   const [uploading, setUploading] = useState(false)
   const [uploaded, setUploaded] = useState(false)
-  const [voiceStarted, setVoiceStarted] = useState(false)
+  // The report is collected first (voice or text) and sent only after the call has ended,
+  // so the neighbour is called after the resident hung up and chose a photo.
+  const [draft, setDraft] = useState("")
+  const [inCall, setInCall] = useState(false)
   const activeReport = useSyncExternalStore(subscribeDemoSession, hasResidentReport, () => false)
   const reported = mock ? canSimulate && activeReport : Boolean(caseId)
   const trackingId = mock ? demoReport.case_id : caseId
@@ -75,17 +78,23 @@ export function TenantReport({ unit, building, canSimulate, liveResident }: {
   function submitReport(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const description = String(new FormData(event.currentTarget).get("description") ?? "").trim()
-    if (description) void createCase(description).catch(() => {})
+    if (description) setDraft(description)
   }
 
-  async function uploadPhoto() {
-    if (!photo || uploading) return
+  async function sendReport() {
+    if (!draft || inCall || submitting) return
+    const id = await createCase(draft).catch(() => "")
+    if (id && photo) await uploadPhoto(id)
+  }
+
+  async function uploadPhoto(targetCase = caseId) {
+    if (!photo || uploading || !targetCase) return
     setUploading(true)
     setError("")
     try {
       const form = new FormData()
       form.set("file", photo)
-      const response = await fetch(`/api/cases/${encodeURIComponent(caseId)}/photo`, { method: "POST", body: form })
+      const response = await fetch(`/api/cases/${encodeURIComponent(targetCase)}/photo`, { method: "POST", body: form })
       if (!response.ok) {
         setError(response.status === 413 ? "Choose an image up to 8 MiB."
           : response.status === 415 ? "Choose a JPEG, PNG or WebP photo."
@@ -98,6 +107,59 @@ export function TenantReport({ unit, building, canSimulate, liveResident }: {
     } finally {
       setUploading(false)
     }
+  }
+
+  function photoBlock(withSend: boolean, open = false) {
+    return (
+        <details className="report-photo" open={open || undefined} onToggle={event => { if (!event.currentTarget.open) setCameraOpen(false) }}>
+          <summary>{uploaded ? "Damage photo sent" : photo ? "Damage photo attached" : "Add a photo (optional)"}</summary>
+          {uploaded ? <p role="status">The photo was sent to your property manager.</p> : <fieldset className="photo-fields" disabled={uploading}>
+          {photo && preview && !cameraOpen && (
+            <div className="photo-attachment">
+              <img className="damage-preview" src={preview} alt="Damage photo preview" />
+              <div className="attachment-actions">
+                <button type="button" className="secondary" onClick={() => setCameraOpen(true)}>Retake</button>
+                <button type="button" className="remove-photo" onClick={() => {
+                  setPhoto(null)
+                  setPreview("")
+                  setError("")
+                }}>Remove</button>
+              </div>
+            </div>
+          )}
+          {cameraOpen && (
+            <PhotoCamera onClose={() => setCameraOpen(false)} onCapture={(captured) => {
+              setError("")
+              attachPhoto(captured)
+              setCameraOpen(false)
+            }} />
+          )}
+          <div className="photo-actions">
+            {!photo && !cameraOpen && (
+              <button type="button" onClick={() => setCameraOpen(true)}>Take photo</button>
+            )}
+            <label className="file-button" htmlFor="damage-photo">
+              {photo ? "Replace from file" : "Choose a file"}
+              <input id="damage-photo" type="file" accept={mock ? "image/*" : "image/jpeg,image/png,image/webp"} aria-describedby="photo-note" onChange={(event) => {
+                const file = event.currentTarget.files?.[0]
+                if (!file) return
+                event.currentTarget.value = ""
+                if (!file.type.startsWith("image/")) {
+                  setError("Choose an image file.")
+                  return
+                }
+                setError("")
+                setCameraOpen(false)
+                attachPhoto(file)
+              }} />
+            </label>
+          </div>
+          <p id="photo-note">{mock ? "The photo stays on this device. The demo uses its sample assessment." : "JPEG, PNG or WebP up to 8 MiB."}</p>
+          {withSend && !mock && photo && !cameraOpen && <button type="button" className="call-button" onClick={() => void uploadPhoto()}>{uploading ? "Sending…" : "Send photo"}</button>}
+          </fieldset>}
+          {error && <p role="alert">{error}</p>}
+        </details>
+    )
   }
 
   return (
@@ -118,83 +180,44 @@ export function TenantReport({ unit, building, canSimulate, liveResident }: {
           <>
             <p>{mock ? "Your property manager has received your report about the leak by the ceiling lamp." : "Your property manager has received your report."}</p>
             <Link className="primary-link" href={`/track/${trackingId}`}>Track this repair</Link>
-            <details className="report-photo" onToggle={event => { if (!event.currentTarget.open) setCameraOpen(false) }}>
-              <summary>{uploaded ? "Damage photo sent" : photo ? "Damage photo attached" : "Add a photo (optional)"}</summary>
-              {uploaded ? <p role="status">The photo was sent to your property manager.</p> : <fieldset className="photo-fields" disabled={uploading}>
-              {photo && preview && !cameraOpen && (
-                <div className="photo-attachment">
-                  <img className="damage-preview" src={preview} alt="Damage photo preview" />
-                  <div className="attachment-actions">
-                    <button type="button" className="secondary" onClick={() => setCameraOpen(true)}>Retake</button>
-                    <button type="button" className="remove-photo" onClick={() => {
-                      setPhoto(null)
-                      setPreview("")
-                      setError("")
-                    }}>Remove</button>
-                  </div>
-                </div>
-              )}
-              {cameraOpen && (
-                <PhotoCamera onClose={() => setCameraOpen(false)} onCapture={(captured) => {
-                  setError("")
-                  attachPhoto(captured)
-                  setCameraOpen(false)
-                }} />
-              )}
-              <div className="photo-actions">
-                {!photo && !cameraOpen && (
-                  <button type="button" onClick={() => setCameraOpen(true)}>Take photo</button>
-                )}
-                <label className="file-button" htmlFor="damage-photo">
-                  {photo ? "Replace from file" : "Choose a file"}
-                  <input id="damage-photo" type="file" accept={mock ? "image/*" : "image/jpeg,image/png,image/webp"} aria-describedby="photo-note" onChange={(event) => {
-                    const file = event.currentTarget.files?.[0]
-                    if (!file) return
-                    event.currentTarget.value = ""
-                    if (!file.type.startsWith("image/")) {
-                      setError("Choose an image file.")
-                      return
-                    }
-                    setError("")
-                    setCameraOpen(false)
-                    attachPhoto(file)
-                  }} />
-                </label>
-              </div>
-              <p id="photo-note">{mock ? "The photo stays on this device. The demo uses its sample assessment." : "JPEG, PNG or WebP up to 8 MiB."}</p>
-              {!mock && photo && !cameraOpen && <button type="button" className="call-button" onClick={uploadPhoto}>{uploading ? "Sending…" : "Send photo"}</button>}
-              </fieldset>}
-              {error && <p role="alert">{error}</p>}
-            </details>
+            {photoBlock(true)}
           </>
         ) : mock && canSimulate ? (
           <>
             <p>Simulate Daniel’s call to report a leak from the living room ceiling.</p>
             <button className="call-button" type="button" onClick={() => saveReplayTime(0)}>Simulate call</button>
           </>
+        ) : !mock && liveResident && draft ? (
+          <div className="report-draft">
+            <h3>Your report</h3>
+            <blockquote>{draft}</blockquote>
+            {inCall ? <p role="status">Finish the call and hang up. Then add a photo and send your report.</p>
+              : <p>Add a photo of the damage if you can, then send your report.</p>}
+            {photoBlock(false, true)}
+            <button type="button" className="call-button" onClick={() => void sendReport()} disabled={inCall || submitting || uploading}>
+              {submitting || uploading ? "Sending…" : "Send report to property management"}
+            </button>
+            {!inCall && <button type="button" className="secondary" onClick={() => setDraft("")} disabled={submitting}>Change description</button>}
+          </div>
         ) : !mock && liveResident ? (
           <div className="written-report">
             <form onSubmit={submitReport}>
               <label>Describe the water leak<textarea name="description" rows={3} required /></label>
-              <button type="submit" disabled={submitting}>{submitting ? "Sending…" : "Send written report"}</button>
+              <button type="submit">Continue</button>
             </form>
           </div>
         ) : <p>There is no active repair scenario for this apartment in the demo.</p>}
-        {!mock && liveResident?.agentId && (!reported || voiceStarted) && (
+        {!mock && liveResident?.agentId && !reported && (!draft || inCall) && (
           <VoiceCall agentId={liveResident.agentId} startLabel="Talk to your property manager"
             language={liveResident.language}
+            onConnect={() => setInCall(true)} onDisconnect={() => setInCall(false)}
             dynamicVariables={{ unit_id: unit, tenant_name: liveResident.name, language: languageName(liveResident.language) }}
             clientTools={{
               create_case: async ({ description }) => {
                 if (typeof description !== "string" || !description.trim()) return "No description given. Ask the resident what happened."
-                // Keep the call mounted once the report exists, so the conversation continues.
-                setVoiceStarted(true)
-                try {
-                  await createCase(description.trim())
-                  return "Case created"
-                } catch {
-                  return "Case could not be created. Ask the resident to use the written form."
-                }
+                // Only collect the report here; the resident sends it after hanging up (see sendReport).
+                setDraft(description.trim())
+                return "Case created"
               },
             }} />
         )}
