@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import OpenAI from "openai";
+import { estimateOpenAiEur } from "./cost";
 
 export const maxPhotoBytes = 8 * 1024 * 1024;
 export const uploadsDirectory = join(process.cwd(), "data", "uploads");
@@ -52,9 +53,12 @@ export async function assessPhoto(bytes: Buffer, mime: string, apiKey: string, m
     throw new Error("Invalid photo assessment.");
   }
   return {
-    damage: assessment.damage as string,
-    severity: assessment.severity as number,
-    urgent: assessment.urgent as boolean,
-    electrics: assessment.electrics as boolean,
+    assessment: {
+      damage: assessment.damage as string,
+      severity: assessment.severity as number,
+      urgent: assessment.urgent as boolean,
+      electrics: assessment.electrics as boolean,
+    },
+    openAiEur: estimateOpenAiEur("main", response.usage),
   };
 }

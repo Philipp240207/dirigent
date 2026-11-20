@@ -6,6 +6,7 @@ import building from "../data/building.json";
 import plumber from "../connectors/plumber_krause.json";
 import { findRiser } from "./building";
 import { now, resetClock } from "./clock";
+import { buildCostPayload } from "./cost";
 
 export type CaseStatus = "open" | "pending_approval" | "dispatched" | "scheduled" | "resolved";
 
@@ -32,9 +33,11 @@ type DemoState = {
   connectors: { partner_id: string; role: string; active: boolean }[];
 };
 
+type StoredState = DemoState & { openAiCostByCase?: Record<string, number> };
+
 const statePath = join(process.cwd(), "data", "state.json");
 const cache = globalThis as typeof globalThis & {
-  dirigentState?: DemoState;
+  dirigentState?: StoredState;
   dirigentRetryTimers?: Set<ReturnType<typeof setTimeout>>;
 };
 const retryTimers = cache.dirigentRetryTimers ??= new Set();
@@ -58,7 +61,7 @@ function initialState(): DemoState {
 function currentState(): DemoState {
   if (!cache.dirigentState) {
     try {
-      cache.dirigentState = JSON.parse(readFileSync(statePath, "utf8")) as DemoState;
+      cache.dirigentState = JSON.parse(readFileSync(statePath, "utf8")) as StoredState;
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
       cache.dirigentState = initialState();
@@ -67,7 +70,7 @@ function currentState(): DemoState {
   return cache.dirigentState;
 }
 
-function saveState(state: DemoState) {
+function saveState(state: StoredState) {
   const temporaryPath = `${statePath}.${randomUUID()}.tmp`;
   try {
     writeFileSync(temporaryPath, JSON.stringify(state, null, 2) + "\n");
@@ -79,7 +82,8 @@ function saveState(state: DemoState) {
 }
 
 export function getState(): DemoState {
-  return structuredClone(currentState());
+  const { cases, events, connectors } = currentState();
+  return structuredClone({ cases, events, connectors });
 }
 
 function stampEvent(input: NewEvent): DemoEvent {
@@ -126,10 +130,36 @@ function refreshPlumberJob(events: DemoEvent[], input: NewEvent): DemoEvent[] {
   return [...events.map((event) => event.id === job.id ? revised : event), notice];
 }
 
-export function addEvent(input: NewEvent): DemoEvent {
+function appendCaseCost(state: StoredState, caseId: string): StoredState {
+  const events = state.events.filter((event) => event.case_id === caseId);
+  const seconds = events.reduce((total, event) => {
+    const duration = event.payload.duration_s;
+    return event.kind === "call_ended" && typeof duration === "number" &&
+      Number.isFinite(duration) && duration > 0 ? total + duration : total;
+  }, 0);
+  const payload = buildCostPayload(seconds, state.openAiCostByCase?.[caseId] ?? 0);
+  const previous = events.findLast((event) => event.kind === "cost");
+  if (previous && JSON.stringify(previous.payload) === JSON.stringify(payload)) return state;
+
+  const event = stampEvent({ case_id: caseId, kind: "cost", actor: "dirigent", payload });
+  return { ...state, events: [...state.events, event] };
+}
+
+export function addEvent(input: NewEvent, openAiEur = 0): DemoEvent {
   const state = currentState();
   const event = stampEvent(input);
-  saveState({ ...state, events: refreshPlumberJob([...state.events, event], event) });
+  const next = { ...state, events: refreshPlumberJob([...state.events, event], event) };
+  const caseId = input.case_id;
+  if (caseId && openAiEur > 0) {
+    next.openAiCostByCase = {
+      ...state.openAiCostByCase,
+      [caseId]: (state.openAiCostByCase?.[caseId] ?? 0) + openAiEur,
+    };
+  }
+
+  const affectsCost = input.kind === "call_ended" || openAiEur > 0;
+  saveState(caseId && affectsCost && state.cases.some((item) => item.id === caseId && item.status === "resolved")
+    ? appendCaseCost(next, caseId) : next);
   return structuredClone(event);
 }
 
@@ -282,11 +312,12 @@ export function updatePartnerJob(caseId: string, partnerId: string, update: Part
     }
   }
 
-  saveState({
+  const next = {
     ...state,
     cases: state.cases.map((item) => item.id === caseId ? { ...item, status } : item),
     events: [...state.events, ...updates.map(stampEvent)],
-  });
+  };
+  saveState(status === "resolved" ? appendCaseCost(next, caseId) : next);
   return "ok";
 }
 
