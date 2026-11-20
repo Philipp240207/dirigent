@@ -6,15 +6,12 @@ export function buildPlumberProposal(
   affectedUnits: string[],
   ceilingLeak: boolean,
 ) {
-  const access = building.infrastructure.access;
-
   // Only controlled building fields and fixed summaries enter the handoff.
   // Tenant free text can contain rent or payment information.
   const shared = {
     address: building.address,
     unit_id: unitId,
-    access_info:
-      `Main door code: ${access.main_door_code}. Key safe: ${access.key_safe}. Cellar key: ${access.cellar_key}.`,
+    caretaker_contact: building.infrastructure.access.caretaker,
     affected_units: affectedUnits,
     problem_description: ceilingLeak
       ? `Water is reported coming through the ceiling of apartment ${unitId}.`
