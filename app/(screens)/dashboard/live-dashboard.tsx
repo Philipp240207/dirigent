@@ -504,7 +504,14 @@ export function LiveDashboard() {
                             <p>The caretaker lets them in. Residents and the caretaker were notified.</p>
                           </>
                           : <>
-                            <p>Dirigent is calling <strong>{name}</strong> to agree on a visit.</p>
+                            {(() => {
+                              const notes = events.filter(event => event.kind === "reasoning" && typeof event.payload.text === "string" && /plumber call|appointment call/i.test(event.payload.text))
+                              const problem = partnerId === "plumber_krause" && notes.some(event => /skipped|did not save|could not be verified/i.test(String(event.payload.text)))
+                              const onPhone = partnerId === "plumber_krause" && notes.some(event => /call started/i.test(String(event.payload.text)))
+                              return problem
+                                ? <p role="alert">The phone call to <strong>{name}</strong> did not confirm a visit. Open their page to enter it.</p>
+                                : <p>Dirigent is calling <strong>{name}</strong>{onPhone ? " on the phone" : ""} to agree on a visit.</p>
+                            })()}
                             <Link className="case-action partner-call-link" href={`/partner/${current.id}?partner=${encodeURIComponent(partnerId)}`}>Open {name}’s phone</Link>
                           </>}
                       </div>
