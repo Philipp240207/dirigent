@@ -16,8 +16,14 @@ export function releasedJobs(partnerId: string) {
     const slot = updates.findLast(event => event.kind === "slot_confirmed")?.payload.slot
     const status = result ? "resolved" : typeof slot === "string" ? "scheduled" : "dispatched"
     const briefing = typeof sent.payload.briefing === "string" ? sent.payload.briefing : ""
+    const assessment = shared?.damage_assessment as { damage?: unknown } | string | undefined
+    const affected = Array.isArray(shared?.affected_units) ? shared.affected_units.filter((unit): unit is string => typeof unit === "string") : []
     return [{
       id: item.id, unit: item.unit_id, status,
+      role: typeof sent.payload.role === "string" ? sent.payload.role : "",
+      availability: typeof shared?.tenant_availability === "string" ? shared.tenant_availability : "",
+      assessment: typeof assessment === "string" ? assessment : typeof assessment?.damage === "string" ? assessment.damage : "",
+      affectedUnits: affected,
       address: typeof shared?.address === "string" ? shared.address : "",
       caretaker: typeof shared?.caretaker_contact === "string" ? shared.caretaker_contact : "",
       scope: typeof shared?.problem_description === "string" ? shared.problem_description : briefing,
