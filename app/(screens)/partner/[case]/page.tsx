@@ -5,7 +5,8 @@ import { IncomingCall } from "./incoming-call"
 import { notFound } from "next/navigation"
 import { electricJob, jobs } from "../jobs"
 import { PartnerJob } from "./partner-job"
-import { isPartnerId } from "../../../../client/partners"
+import { isPartnerId, partnerName } from "../../../../client/partners"
+import { buildingPortrait, scenarioBuilding } from "../../../../client/buildings"
 
 export const metadata = { title: "Partner job · Dirigent" }
 
@@ -21,17 +22,35 @@ export default async function PartnerPage({ params, searchParams }: { params: Pr
     const agentId = process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_PARTNER?.trim()
     const street = job.address.split(",")[0].replace(/stra(ss|ß)e\b/i, "Str.")
     const briefing = [job.scope, job.address, job.caretaker && `Access: ${job.caretaker}.`].filter(Boolean).join(" ")
+    const title = job.role === "electrician" ? "Ceiling lamp inspection" : "Water leak"
     return <>
-      <div className="heading management-heading"><div><h1>Water leak in apartment {job.unit}</h1><p>{job.address}</p></div></div>
+      <div className="heading management-heading"><div><h1>{title}</h1><p>{partnerName(partner)}</p></div></div>
+      <div className="tenant-location" aria-label="Job location">
+        <img src={buildingPortrait(scenarioBuilding)} width="72" height="76" alt="" />
+        <div><strong>{scenarioBuilding.address}</strong><p>{scenarioBuilding.city}</p></div>
+        <span>Apartment {job.unit}</span>
+      </div>
       {agentId && <IncomingCall key={`${job.id}/${partner}`} agentId={agentId} caseId={job.id} partnerId={partner} completed={completed}
         mode={scheduled ? "report" : "dispatch"} caller={`Hausverwaltung ${street || "Dirigent"}`} fallbackBriefing={briefing} />}
-      <section className="report-card">
-        <h2>{completed ? "Work reported" : scheduled ? "Report your work" : "Confirm your visit"}</h2>
-        {job.scope && <p>{job.scope}</p>}
-        {job.caretaker && <p><strong>Access</strong> {job.caretaker}</p>}
-        {job.slot && <p><strong>Appointment</strong> {job.slot}</p>}
-        {completed ? <><p>{job.work}</p>{job.cost !== null && <p>Reported charge: €{job.cost}</p>}</>
-          : <WorkForm key={job.id + job.status} id={job.id} partnerId={partner} schedule={!scheduled} />}
+      <section className="report-card" aria-labelledby="job-heading">
+        <h2 id="job-heading">{completed ? "Work reported" : scheduled ? "Report your work" : "Confirm your visit"}</h2>
+        {!scheduled && !completed && job.scope && <p>{job.scope}</p>}
+        {scheduled && <p>Visit confirmed for <strong>{job.slot}</strong>. Report the result once the work is complete.</p>}
+        {completed ? <div className="partner-result">
+          {job.cost !== null && <strong>Reported charge: €{job.cost}</strong>}
+          <p>{job.work}</p>
+        </div> : <WorkForm key={job.id + job.status} id={job.id} partnerId={partner} schedule={!scheduled} />}
+        <details className="job-disclosure">
+          <summary>Work order details</summary>
+          <p>{job.scope}</p>
+          <dl>
+            {job.caretaker && <div><dt>Access</dt><dd>{job.caretaker}</dd></div>}
+            {job.slot && <div><dt>Appointment</dt><dd>{job.slot}</dd></div>}
+            {job.assessment && <div><dt>Damage assessment</dt><dd>{job.assessment}</dd></div>}
+            {job.availability && <div><dt>Tenant availability</dt><dd>{job.availability}</dd></div>}
+            {job.affectedUnits.length > 0 && <div><dt>Affected units</dt><dd>{job.affectedUnits.join(", ")}</dd></div>}
+          </dl>
+        </details>
       </section>
     </>
   }

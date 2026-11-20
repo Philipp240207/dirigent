@@ -1,6 +1,7 @@
 import { getState } from "@/lib/store"
 import { scenarioBuilding } from "../../../../client/buildings"
 import { LiveRefresh } from "../../live-refresh"
+import { HomeLink } from "../../home-link"
 import { notFound } from "next/navigation"
 import { demoReport } from "../../../../client/state"
 import { RepairTracking } from "./repair-tracking"
@@ -44,7 +45,7 @@ export default async function TrackPage({ params }: { params: Promise<{ case: st
       : water === "restored" ? "The water on your riser is back on." : ""
     return <main className="tracking-page">
       {item.status !== "resolved" && <LiveRefresh />}
-      <header className="topbar"><strong>Dirigent</strong><span className="mode">Resident portal</span></header>
+      <header className="topbar"><HomeLink href={`/tenant/${item.unit_id}`} /><span className="mode">Resident portal</span></header>
       <div className="heading"><div><h1>Water leak</h1><p>{scenarioBuilding.address} · Apartment {item.unit_id}</p></div></div>
       <section className="tracking-status" data-complete={repaired} aria-live="polite">
         <h2>{steps[current]}</h2><p>{messages[current]}</p>
@@ -52,7 +53,11 @@ export default async function TrackPage({ params }: { params: Promise<{ case: st
       </section>
       <section className="tracking-progress"><h2>Repair progress</h2><ol>{steps.map((label, index) =>
         <li key={label} data-step={index < current ? "done" : index === current ? "current" : "upcoming"} aria-current={index === current ? "step" : undefined}>
-          <span className="tracking-dot" aria-hidden="true">{index <= current && "✓"}</span>
+          <span className="tracking-dot" aria-hidden="true">{index <= current && (
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="m3 7 2.5 2.5L11 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}</span>
           <span>{label}{index === 3 && slots.map(slot => <small key={slot}>{slot}</small>)}</span>
         </li>)}</ol></section>
     </main>
