@@ -10,6 +10,7 @@ type VoiceCallProps = {
   startLabel: string
   /** Agent language code ("en", "de"); sent as overrides.agent.language. */
   language?: string
+  onConnect?: () => void
   onDisconnect?: () => void
   onClosed?: () => void
 }
@@ -18,11 +19,12 @@ export function VoiceCall(props: VoiceCallProps) {
   return <ConversationProvider><VoiceControls {...props} /></ConversationProvider>
 }
 
-function VoiceControls({ agentId, dynamicVariables, clientTools, startLabel, language, onDisconnect, onClosed }: VoiceCallProps) {
+function VoiceControls({ agentId, dynamicVariables, clientTools, startLabel, language, onConnect, onDisconnect, onClosed }: VoiceCallProps) {
   const [error, setError] = useState("")
   const conversation = useConversation({
     onError: () => setError("The call could not continue. Check microphone access and try again."),
     clientTools,
+    onConnect,
     onDisconnect,
   })
   const idle = conversation.status !== "connected" && conversation.status !== "connecting"
