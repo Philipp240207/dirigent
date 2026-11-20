@@ -4,7 +4,7 @@ import building from "@/data/building.json";
 import { now } from "@/lib/clock";
 import { startResidentCall } from "@/lib/calls";
 import { buildLeakTimeline } from "@/lib/dirigent";
-import { saveNewCase, type DemoCase } from "@/lib/store";
+import { saveLeakTimeline, saveNewCase, type DemoCase } from "@/lib/store";
 
 export async function POST(request: Request) {
   const input: unknown = await request.json().catch(() => null);
@@ -28,8 +28,8 @@ export async function POST(request: Request) {
     created_at: now().toISOString(),
   };
 
-  const { events, residentCalls } = buildLeakTimeline(demoCase, input.description);
-  saveNewCase({ ...demoCase, status: "pending_approval" }, [
+  const description = input.description.trim();
+  saveNewCase(demoCase, [
     {
       case_id: demoCase.id,
       kind: "case_created",
@@ -38,17 +38,16 @@ export async function POST(request: Request) {
         type: demoCase.type,
         unit_id: unit.id,
         tenant_id: unit.tenant_id,
-        description: input.description.trim(),
+        description,
       },
     },
-    ...events,
   ]);
 
-  if (residentCalls.length) {
-    after(async () => {
-      await Promise.all(residentCalls.map((call) => startResidentCall(call)));
-    });
-  }
+  after(async () => {
+    const { events, residentCalls } = buildLeakTimeline(demoCase, description);
+    if (!saveLeakTimeline(demoCase.id, events)) return;
+    await Promise.all(residentCalls.map((call) => startResidentCall(call)));
+  });
 
   return Response.json({ case_id: demoCase.id });
 }
