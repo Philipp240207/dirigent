@@ -1,167 +1,93 @@
-# Rollen, Aufgaben und Zeitplan
+# Rollen, Aufgaben und Zeitplan (Stand 20:00)
 
-Technik steht in `CLAUDE.md`. Diese Datei sagt nur: **wer, was, bis wann.**
+Technik steht in `CLAUDE.md`. Hier steht nur: **wer, was, bis wann.**
 
-**Grundprinzip: Jeder arbeitet allein.** Niemand wartet auf jemand anderen. Das geht, weil die Schnittstellen in `CLAUDE.md` Abschnitt 5 fest sind und jeder einen eigenen Testweg hat:
-- **Emil** testet seinen Server mit curl-Befehlen, Anrufe im Testmodus (`CALLS_DRY_RUN=true`).
-- **Philipp** baut alle Bildschirme mit Testdaten (`NEXT_PUBLIC_MOCK=true`, spielt `fixtures/demo-events.json` ab).
-- **Julian** baut und testet die Agents direkt im ElevenLabs-Dashboard.
+**Neu nach dem Gespräch mit reltix: weniger ist mehr.** Wir zeigen nur EINEN Fall, den Wasserschaden, und den perfekt mit allen Szenarien (Nachbar geht nicht ran → Nachricht → zweiter Anruf, Elektriker wird live angebunden, Freigabe, Hausmeister öffnet). Der Einzug mit Internet ist nur noch Stufe 3.
 
-Zusammengesteckt wird nur zu festen Zeiten: **19:00, 22:00, 24:00.**
-Jeder ändert nur Dateien in seinem Bereich (CLAUDE.md Abschnitt 4).
+**Jeder arbeitet allein**, gegen die festen Schnittstellen in `CLAUDE.md` Abschnitt 5. Zusammengesteckt wird um **22:00** und **24:00**, danach immer, wenn ein Teil fertig ist.
 
 ---
 
-## Gemeinsamer Zeitplan
+## Zeitplan
 
 | Zeit | Was |
 |---|---|
-| 15:30 bis 16:00 | Setup (unten pro Person) |
-| 16:00 bis 19:00 | **Allein bauen** |
-| **19:00 bis 19:45** | **Zusammenstecken 1:** Daniel spricht → Fall → Dirigent → Dashboard (Anrufe noch im Testmodus) |
-| 19:45 bis 22:00 | Allein bauen |
-| **22:00 bis 22:30** | **Zusammenstecken 2:** echter Anruf auf Emils Handy, Freigabe durch die Hausverwaltung, Installateur, "fertig, 340 €" |
-| 22:30 bis 24:00 | Allein bauen + Lücken schließen |
-| **24:00** | **Gate 1:** ganzer Ablauf 3-mal fehlerfrei auf dem Demo-Laptop. Prüfen: Installateur sieht vor der Freigabe nichts, doppeltes Klicken gibt nur einmal frei |
-| 00:00 bis 03:00 | Wow-Teile (Stufe 2), einstecken, sobald ein Teil fertig ist |
-| **03:00** | **Feature Freeze**, 03:00 bis 03:30 letzte Fehler, alles in `main` |
-| 03:30 bis 05:00 | Emil und Philipp schlafen, Julian ist wach (hat 01:30 bis 03:00 geschlafen) |
-| 05:00 bis 07:30 | Dreh auf dem Demo-Laptop |
+| 19:20 bis 22:00 | Allein bauen (Listen unten) |
+| **22:00 bis 22:30** | **Zusammenstecken auf dem Demo-Laptop:** echter Anruf auf Emils Handy (1. Mal nicht rangehen, 2. Mal rangehen), Freigabe, Installateur, "fertig, 340 €" |
+| 22:30 bis 24:00 | Lücken schließen, jede Zeile der Szenario-Tabelle (CLAUDE.md Abschnitt 2) einmal testen |
+| **24:00** | **Gate 1:** der ganze Fall ohne Elektriker 3-mal fehlerfrei |
+| 00:00 bis 03:00 | Stufe 2: Elektriker live anbinden, Karte + Liste, Kostenzähler, Kontext-Panel |
+| **03:00** | **Feature Freeze**, bis 03:30 Fehler beheben, alles in `main` |
+| 01:30 bis 03:00 | Julian schläft |
+| 03:30 bis 05:00 | Emil und Philipp schlafen, Julian ist wach |
+| 05:00 bis 07:30 | Dreh auf dem Demo-Laptop (`RETRY_DELAY_MINUTES=1`) |
 | 07:30 bis 09:30 | Schnitt, README, Zip |
 | **bis 10:00** | **Hochgeladen** (Deadline 10:30) |
 
-Team-Checks (je max. 10 Minuten) zusätzlich um **16:00 und 03:00**: Was läuft? Was hängt? Wer länger als 45 Minuten an einem Fehler hängt, meldet sich sofort.
-
-**Demo-Laptop:** Wird um 16:00 festgelegt (der mit dem meisten Arbeitsspeicher). Darauf laufen Zusammenstecken, Gate 1 und der Dreh.
+Team-Checks (max. 10 Minuten): **22:00, 24:00, 03:00, 07:30**. Wer 45 Minuten an einem Fehler hängt, meldet sich sofort.
 
 ---
 
-## Julian: Agents, Twilio, Daten, Video
+## Julian
 
-**15:30 bis 16:00 Setup**
-- [ ] Alle Keys in den Gruppenchat: OpenAI, ElevenLabs (erledigt), Twilio folgt
-- [ ] BuilderBase: alle drei im selben Team, Login mit der Luma-E-Mail
-- [ ] reltix-Mentor (10 Minuten): Wie viel Arbeitszeit kostet ein Schadensfall heute wirklich?
+**bis 20:00**
+- [ ] Die 3 Agents fertig einrichten (Dateien in `prompts/`), System-Tools: **Anruf beenden** bei allen, **Spracherkennung** bei `tenant_intake`, **Mailbox-Erkennung** (Voicemail detection) bei `resident_call`
+- [ ] Agent-IDs und die IDs der 3 Stimmen in den Gruppenchat
+- [ ] Prompts committen (Branch `julian/prompts`)
+- [ ] Geänderten Text aus `prompts/tenant_intake.md` in den Agent im ElevenLabs-Dashboard kopieren (Schritt 3 neu: das Wasser am Strang wird abgestellt; zwei neue Regeln unten: Fallback bei Tool-Fehler, Sprachwechsel)
 
-**16:00 bis 19:00 allein**
-- [ ] **Twilio:** upgraden (ca. 20 $), US-Nummer kaufen, Geo-Permissions NL und DE, in ElevenLabs importieren. Phone-Number-ID in den Gruppenchat
-- [ ] **Markenstimme** mit Voice Design, in Englisch, Deutsch, Französisch anhören
-- [ ] **3 Agents** anlegen, genau wie in CLAUDE.md 5.4 und 7.3 (Namen, Variablen, Client-Tools, Sprachen, Overrides, öffentlich, KI-Hinweis). Prompts als Kopie in `prompts/`
-- [ ] Jeden Agent im ElevenLabs-Testfenster durchsprechen
-- [ ] Agent-IDs in den Gruppenchat (spätestens 19:00)
-- [ ] Schadensfoto besorgen (selbst fotografieren oder mit GPT-Image erzeugen)
+**bis 22:00**
+- [ ] `docs/connector-spec.md` (Pflichtabgabe B): die 4 Blöcke, Beispiele Installateur und Elektriker, dazu der ISP als drittes Beispiel (`mode: sell`), "was bekommt der Partner, was bekommen wir zurück", ein Satz zu `detect.conditions` (das Modell prüft die Bedingung und schreibt das Ergebnis ins Reasoning)
+- [ ] `docs/elektro_schmitz_website.txt`: kurze Webseite des fiktiven Elektrikers (Leistungen, Notdienst, was sie für einen Auftrag brauchen)
+- [ ] `data/portfolio.json` und den Hausmeister in `data/building.json` prüfen; `data/building.json` ist korrigiert (Elektriker darf Daniels und Krügers Verfügbarkeit sehen, Elektro Schmitz ist aus `providers` raus, neue Regel "Wasser abstellen")
+- [ ] **Drehbuch** mit allen Szenen aus CLAUDE.md Abschnitt 10, Antwort-Notizen für Emil (1. Anruf: ablehnen; 2. Anruf: "Ja, ich sehe einen nassen Fleck an der Decke im Wohnzimmer"; Extra-Take: "Nein, hier ist alles trocken") und Philipp (Installateur und Elektriker). Kernsatz im Video: **"Herr Krueger never called us. We called him."**, dazu der 3-Sekunden-Take **"And if he says no?"** (2.1 wird grün)
+- [ ] Schadensfoto: Wasserfleck an der Decke **neben einer Deckenlampe** (selbst fotografieren oder GPT-Image)
 
-**19:00 bis 19:45 Zusammenstecken 1** (Daniel spielen)
-
-**19:45 bis 22:00 allein**
-- [ ] `docs/connector-spec.md` (Pflichtabgabe B): die 4 Blöcke, beide Beispiele (Installateur und RheinNet liegen schon im Repo), "was bekommt der Partner, was bekommen wir zurück"
-- [ ] `docs/rheinnet_website.txt`: kurze Webseite des fiktiven Anbieters (Tarife, was sie für eine Bestellung brauchen)
-- [ ] **Drehbuch** mit Text jeder Szene (inklusive Freigabe durch die Hausverwaltung) und Antwort-Notizen für Emil (Herr Krüger) und Philipp (Installateur)
-
-**22:00 bis 24:00** Zusammenstecken 2, danach Gate 1 abnehmen, funktionierende Teile als Rohaufnahme sichern
-
-**00:00 bis 01:30**
-- [ ] Lucas' Anruf auf Französisch testen (dein Handy)
-- [ ] Kostenrechnung mit echten Zahlen: pro Fall, pro Wohnung und Monat, 100.000 Wohnungen
-- [ ] **Schlafen 01:30 bis 03:00**
-
-**03:00 bis 05:00**
-- [ ] Freeze abnehmen
-- [ ] Schnitt vorbereiten: Titel- und Kapitelkarten (die 4 reltix-Schritte), Labels, Untertitel-Texte
-- [ ] README-Text "Was ist Dirigent"
-
-**05:00 bis 10:00**
-- [ ] Regie beim Dreh, Daniel (Laptop) und Lucas (Handy) spielen
-- [ ] 07:30 bis 09:30 Video schneiden, unter 2:30
-- [ ] 09:30 bis 10:00 hochladen: Video + Zip von Emil + GitHub-Link
+**22:00 bis 01:30:** Zusammenstecken (du spielst Daniel), Gate 1 abnehmen, Rohaufnahmen sichern, Kostenrechnung mit echten Zahlen. **Schlafen 01:30 bis 03:00.**
+**03:00 bis 05:00:** Freeze abnehmen, Titel- und Kapitelkarten, Untertitel-Texte, README-Text mit kleiner Tabelle "echt / simuliert" (CLAUDE.md Abschnitt 12). Demo-Laptop: `DEMO_NOW=2026-11-20T13:40:00+01:00` in `.env.local`, Dreh mit `npm run build && npm start`.
+**05:00 bis 10:00:** Regie beim Dreh, Schnitt (unter 2:30), hochladen.
 
 ---
 
-## Emil: Server
+## Emil
 
-**15:30 bis 16:00 Setup**
-- [ ] Next.js-Projekt anlegen: `npx create-next-app@latest dirigent --ts --app --eslint` (Standardantworten)
-- [ ] **Inhalt des Teampakets** hineinkopieren (bei doppelten Dateien gewinnt unsere, bei `.gitignore` unsere Zeilen anhängen)
-- [ ] Alle Pakete auf einmal: `npm install openai ajv @elevenlabs/react`
-- [ ] GitHub-Repo `dirigent` (privat), pushen, Julian und Philipp einladen
-- [ ] `.env.example` kopieren nach `.env.local`, Keys eintragen, `CALLS_DRY_RUN=true`
+**bis 22:00**
+- [ ] Zustand und Timer an `globalThis` hängen (`lib/store.ts`), sonst fällt der zweite Anruf nach jedem Speichern weg
+- [ ] `lib/clock.ts` mit `now()` (Demo-Uhr `DEMO_NOW`), überall für `at` und `created_at` benutzen
+- [ ] `findAffectedUnits`: 4.1 = `source`, 2.1 = `high`, 1.1 und Keller = `check` (deine Logik "Nachricht an 4.1" passt genau); gibt auch den Strang zurück (`id`, `main_valve`, `units`)
+- [ ] **Wasser abstellen:** Nachricht an den Hausmeister (Ventil Strang A, Ort aus `main_valve`) und an alle vier Wohnungen am Strang; nach dem Ergebnis des Installateurs "Wasser läuft wieder". Wenn es zeitlich eng wird: erst nach Gate 1
+- [ ] Anruf-Ergebnis: Transkript abfragen, GPT-6 Luna liest `damage_found`, `affected` `confirmed` oder `clear`
+- [ ] **Nicht rangegangen / Mailbox** → Nachricht, `call_retry_scheduled` (`at` immer als ISO-Zeit), zweiter Versuch nach `RETRY_DELAY_MINUTES`, nach dem letzten Fehlversuch Nachricht an den Hausmeister. Im Testmodus: 1. Versuch nicht rangegangen, 2. Versuch rangegangen mit Schaden
+- [ ] Freigabe **pro Partner**: `POST /api/cases/[id]/approve` mit `partner_id`, `partner-job`, `slot` und `result` ebenfalls mit `partner_id`. `partner_job_proposed` neu schreiben, wenn Foto oder bestätigte Wohnung dazukommt (nach der Freigabe stattdessen `message` an den Partner)
+- [ ] Hausmeister-Kontakt im Kontext-Pass, Schlüsseltresor-Code nie. Kontext-Pass als Positivliste (nur was erlaubt ist, geht raus); das Modell bekommt das Gebäude ohne `providers`
+- [ ] curl-Tests in `docs/LOKAL_TESTEN.md` laufen alle
 
-**16:00 bis 19:00 allein** (Test: curl-Befehle aus `docs/LOKAL_TESTEN.md`)
-- [ ] `lib/store.ts`, `GET /api/state`, `POST /api/reset`
-- [ ] `lib/building.ts` mit `findAffectedUnits`
-- [ ] `POST /api/cases` + `lib/dirigent.ts` (Responses API, Tools aus CLAUDE.md 7.1)
-- [ ] `lib/calls.ts` im Testmodus
-- [ ] `POST /api/cases/[id]/photo` + `GET /api/uploads/[file]`
-- [ ] Bis 19:00 in `main` mergen
-
-**19:00 bis 19:45 Zusammenstecken 1**
-
-**19:45 bis 22:00 allein**
-- [ ] `lib/calls.ts` echt: ElevenLabs-Outbound über Twilio, Gespräch alle 5 s abfragen, `call_ended`
-- [ ] `lib/contextPass.ts`, Vorschlag `partner_job_proposed` + Status `pending_approval`
-- [ ] `POST /api/cases/[id]/approve` (gibt den Auftrag genau einmal frei) + `GET /api/partner-job` (vor der Freigabe Fehler)
-- [ ] `POST /api/cases/[id]/slot` und `POST /api/cases/[id]/result` (Wartungsprotokoll, Status, Nachrichten)
-
-**22:00 bis 24:00** Zusammenstecken 2 (Herrn Krüger am Handy spielen), Gate 1
-
-**00:00 bis 03:00 allein**
-- [ ] `lib/connectors.ts` + `POST /api/events` (Einzug → `order` + Anruf an Lucas)
-- [ ] `POST /api/connectors/draft` (gegen `connectors/schema.json` prüfen) + `POST /api/connectors/activate`
-- [ ] `lib/cost.ts` → `cost`-Event
-- [ ] 03:00 bis 03:30 Fehler beheben, alles in `main`
-- [ ] **Schlafen 03:30 bis 05:00**
-
-**05:00 bis 09:15**
-- [ ] Dreh: Herrn Krüger spielen, Fehler sofort beheben
-- [ ] README Technikteil, Key-Check, **Zip bis 09:15 an Julian** (CLAUDE.md 12)
+**22:00 bis 03:00:** Zusammenstecken (Herrn Krüger spielen: 1. Anruf **ablehnen** statt klingeln lassen und prüfen, welchen Status die API dann meldet; 2. Anruf rangehen), Gate 1, dann Stufe 2: Elektriker (Foto mit `electrics: true` → Vorschlag Rolle `electrician`, `connectors/activate` mit `case_id`), `lib/cost.ts`, `tool` im `reasoning`-Ereignis mitschicken. **Schlafen 03:30 bis 05:00.**
+**05:00 bis 09:15:** Dreh, Fehler beheben, README Technikteil, Key-Check, **Zip bis 09:15**.
 
 ---
 
-## Philipp: Bildschirme
+## Philipp
 
-**15:30 bis 16:00 Setup**
-- [ ] Programme installieren nach `docs/LOKAL_TESTEN.md` Teil 1
-- [ ] Apple Design Resources: iOS-Design-Vorlage als Referenz öffnen (Farben und Regeln in CLAUDE.md 6)
-- [ ] Sobald Emil das Repo hat: klonen, eigener Branch, `.env.local` mit `NEXT_PUBLIC_MOCK=true`
+**bis 22:00**
+- [ ] Haus-Querschnitt mit den neuen Farben: gemeldet / bestätigt rot, `high` orange, `source` gelb, `check` grau umrandet (jetzt auch 1.1), `clear` grün
+- [ ] Timeline mit Anrufversuchen: "nicht erreicht", "erneuter Anruf um ..." (aus der ISO-Zeit in `at`), Antwort des Nachbarn. Alle Uhrzeiten aus den Ereignissen, nie aus der Browser-Uhr (Mock-Modus: 13:40:00 + `at_s`)
+- [ ] **Freigabe-Karte pro Partner** (Umfang, geteilte Felder, zurückgehaltene verschwommen, **Approve and send**); zeigt pro Partner immer den **neuesten** `partner_job_proposed`
+- [ ] `/partner/[case]?partner=...` für Installateur und Elektriker, `/track/[case]` im Paketverfolgungs-Stil
+- [ ] Mock-Modus mit den neuen Testdaten (`fixtures/demo-events.json`: jetzt mit Ventil-Nachrichten, 1.1 und zweitem Installateur-Vorschlag)
 
-**16:00 bis 19:00 allein** (Test: Mock-Modus spielt die ganze Demo ab)
-- [ ] `client/state.ts`: Mock-Abspieler für `fixtures/demo-events.json` + echtes Abfragen von `GET /api/state`
-- [ ] `/dashboard`: Haus-SVG, Farben nach Ereignissen, Seitenleiste mit Dirigent-Schritten, Outbox, Knopf "Reset demo"
-- [ ] Freigabe-Karte der Hausverwaltung: Installateur, Umfang, geteilte Felder, Knopf **"Approve and send"** (Mock hält dort an)
-- [ ] `/tenant/[unit]`: Gespräch mit `tenant_intake` (`@elevenlabs/react`, Client-Tool `create_case`), im Mock-Modus Knopf "Simulate call", Foto-Knopf
-- [ ] Bis 19:00 in `main` mergen
-
-**19:00 bis 19:45 Zusammenstecken 1** (Mock aus)
-
-**19:45 bis 22:00 allein**
-- [ ] Wasser-Animation die Steigleitung hinunter
-- [ ] `/partner/[case]`: Auftragskarte, Knöpfe "Incoming job" und "Report done" (`partner_call` mit Client-Tools `confirm_slot`, `report_result`)
-- [ ] `/track/[case]`: Timeline im iPhone-Stil
-
-**22:00 bis 24:00** Zusammenstecken 2 (Installateur spielen), Gate 1
-
-**00:00 bis 03:00 allein**
-- [ ] Connector-Bildschirm: Textfeld → Draft → JSON → Activate → Knopf "Lucas zieht in 4.2 ein"
-- [ ] Kostenzähler
-- [ ] Kontext-Panel: geteilt und zurückgehalten nebeneinander, zurückgehalten verschwommen
-- [ ] 03:00 bis 03:30 Fehler beheben, alles in `main`
-- [ ] **Schlafen 03:30 bis 05:00**
-
-**05:00 bis 09:30**
-- [ ] Bildschirmaufnahmen aller Szenen, Installateur spielen, Rohaufnahmen bis 07:30 an Julian
-- [ ] Screenshots für die README, Julian beim Untertiteln helfen
+**22:00 bis 03:00:** Zusammenstecken (Installateur spielen), Gate 1, dann Stufe 2: **Karte von Düsseldorf + Häuserliste** (`data/portfolio.json`, gezeichnete SVG-Karte, kein Kartendienst), Connector-Bildschirm "Elektriker anbinden" (drei Prüfhaken nach "Draft", drei Connector-Karten: Installateur, Elektriker, ISP), Kostenzähler mit Zähler "Touchpoints handled / Manager clicks", Kontext-Panel, Tool-Chips im Reasoning-Stream. **Schlafen 03:30 bis 05:00.**
+**05:00 bis 09:30:** Bildschirmaufnahmen, Installateur und Elektriker spielen, Screenshots für die README.
 
 ---
 
-## Das Einzige, was zwischen euch fließen muss
+## Was zwischen euch fließen muss
 
 | Was | Von | An | Wann |
 |---|---|---|---|
-| Repo-Einladung | Emil | Julian, Philipp | 16:00 |
-| Keys, Twilio-Phone-Number-ID, Agent-IDs | Julian | alle (Gruppenchat) | IDs spätestens 19:00 |
-| Code in `main` | Emil, Philipp | alle | 19:00 |
+| Agent-IDs + Stimmen-IDs | Julian | alle | 20:00 |
+| Code in `main` | Emil, Philipp | alle | 22:00 |
 | Drehbuch + Antwort-Notizen | Julian | Emil, Philipp | 22:00 |
+| Elektriker-Webseitentext | Julian | Emil, Philipp | 22:00 |
 | Rohaufnahmen | Philipp | Julian | 07:30 |
 | Code-Zip | Emil | Julian | 09:15 |
-
-Alles andere läuft über die festen Schnittstellen. Wenn jemand meint, eine Schnittstelle ändern zu müssen: 2 Minuten mit allen abstimmen, zuerst in `CLAUDE.md` ändern, dann im Code.

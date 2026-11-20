@@ -53,7 +53,8 @@
               "lockout",
               "move_in",
               "move_out",
-              "annual_invoice"
+              "annual_invoice",
+              "water_leak_near_electrics"
             ]
           },
           "minItems": 1

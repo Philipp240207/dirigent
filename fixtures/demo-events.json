@@ -1,19 +1,13 @@
 {
-  "_comment": "Mock data for NEXT_PUBLIC_MOCK=true. Replay events by at_s (seconds from start). Case status = latest status_change. The event with pause_until_approved=true stops the replay until the manager clicks Approve and send; then continue (later at_s values count from the click). Uses only event kinds from CLAUDE.md 5.2.",
+  "_comment": "Mock data for NEXT_PUBLIC_MOCK=true: the whole water-leak case. Replay events by at_s. Case status = latest status_change; unit colour = latest affected event per unit. The event with pause_until_approved=true stops the replay until Approve and send is clicked, then continue. Uses only event kinds from CLAUDE.md 5.2. Screen clock = 13:40:00 + at_s (demo clock). call_retry_scheduled.at is an ISO timestamp. partner_job_proposed appears twice for plumber_krause: the latest one per partner_id wins. Touchpoints = events of kind message, call_started, partner_job, slot_confirmed, result.",
   "cases": [
     {
       "id": "c1",
       "type": "water_leak",
+      "building_id": "ksw-12",
       "unit_id": "3.1",
       "status": "open",
       "created_at_s": 0
-    },
-    {
-      "id": "c2",
-      "type": "move_in",
-      "unit_id": "4.2",
-      "status": "open",
-      "created_at_s": 60
     }
   ],
   "connectors": [
@@ -34,7 +28,7 @@
         "type": "water_leak",
         "unit_id": "3.1",
         "tenant_id": "t31",
-        "description": "Water is dripping from the ceiling in the living room"
+        "description": "Water is dripping from the living-room ceiling next to the ceiling lamp, started about 20 minutes ago."
       }
     },
     {
@@ -44,24 +38,35 @@
       "kind": "reasoning",
       "actor": "dirigent",
       "payload": {
-        "text": "Water leak reported in 3.1. Checking riser A in the building graph."
+        "text": "Water leak reported in 3.1. Walking riser A in the building graph."
       }
     },
     {
       "id": "e3",
       "case_id": "c1",
-      "at_s": 4,
+      "at_s": 3,
       "kind": "affected",
       "actor": "dirigent",
       "payload": {
         "unit_id": "3.1",
-        "risk": "high"
+        "risk": "confirmed"
       }
     },
     {
       "id": "e4",
       "case_id": "c1",
-      "at_s": 5,
+      "at_s": 4,
+      "kind": "affected",
+      "actor": "dirigent",
+      "payload": {
+        "unit_id": "4.1",
+        "risk": "source"
+      }
+    },
+    {
+      "id": "e5",
+      "case_id": "c1",
+      "at_s": 4,
       "kind": "affected",
       "actor": "dirigent",
       "payload": {
@@ -70,20 +75,9 @@
       }
     },
     {
-      "id": "e5",
-      "case_id": "c1",
-      "at_s": 6,
-      "kind": "affected",
-      "actor": "dirigent",
-      "payload": {
-        "unit_id": "1.1",
-        "risk": "low"
-      }
-    },
-    {
       "id": "e6",
       "case_id": "c1",
-      "at_s": 7,
+      "at_s": 5,
       "kind": "affected",
       "actor": "dirigent",
       "payload": {
@@ -94,15 +88,91 @@
     {
       "id": "e7",
       "case_id": "c1",
-      "at_s": 8,
-      "kind": "reasoning",
+      "at_s": 5,
+      "kind": "affected",
       "actor": "dirigent",
       "payload": {
-        "text": "2.1 is directly below on riser A: high risk, calling Herr Krueger in German."
+        "unit_id": "1.1",
+        "risk": "check"
       }
     },
     {
       "id": "e8",
+      "case_id": "c1",
+      "at_s": 5,
+      "kind": "reasoning",
+      "actor": "dirigent",
+      "payload": {
+        "text": "Riser A feeds 4.1, 3.1, 2.1 and 1.1. Asking the caretaker to close the riser A valve and telling all four flats that the water is off.",
+        "tool": "find_affected_units(3.1)"
+      }
+    },
+    {
+      "id": "e9",
+      "case_id": "c1",
+      "at_s": 6,
+      "kind": "message",
+      "actor": "dirigent",
+      "payload": {
+        "to": "caretaker",
+        "text": "Water leak at Kaiserswerther Strasse 12, flat 3.1. Please close the riser A main valve now: cellar, left wall behind door K1."
+      }
+    },
+    {
+      "id": "e10",
+      "case_id": "c1",
+      "at_s": 6,
+      "kind": "message",
+      "actor": "dirigent",
+      "payload": {
+        "to": "t31",
+        "text": "We are shutting off the water on your riser until the plumber has fixed the leak. We will tell you when it is back on."
+      }
+    },
+    {
+      "id": "e11",
+      "case_id": "c1",
+      "at_s": 6,
+      "kind": "message",
+      "actor": "dirigent",
+      "payload": {
+        "to": "t11",
+        "text": "Guten Tag Herr Becker, wegen eines Wasserschadens im Haus ist das Wasser in Ihrem Strang voruebergehend abgestellt. Wir melden uns, sobald es wieder laeuft."
+      }
+    },
+    {
+      "id": "e12",
+      "case_id": "c1",
+      "at_s": 6,
+      "kind": "reasoning",
+      "actor": "dirigent",
+      "payload": {
+        "text": "4.1 is directly above on riser A: possible source. Asking them to check sinks, bath and washing machine."
+      }
+    },
+    {
+      "id": "e13",
+      "case_id": "c1",
+      "at_s": 7,
+      "kind": "message",
+      "actor": "dirigent",
+      "payload": {
+        "to": "t41",
+        "text": "Hello Mr Carter, there is a water leak in the flat below you. Could you please check under your sinks, the bath and the washing machine for leaks? Thank you. We are shutting off the water on your riser until the plumber is done."
+      }
+    },
+    {
+      "id": "e14",
+      "case_id": "c1",
+      "at_s": 8,
+      "kind": "reasoning",
+      "actor": "dirigent",
+      "payload": {
+        "text": "2.1 is directly below: high risk. Calling Herr Krueger in German."
+      }
+    },
+    {
+      "id": "e15",
       "case_id": "c1",
       "at_s": 9,
       "kind": "call_started",
@@ -110,61 +180,79 @@
       "payload": {
         "to_tenant_id": "t21",
         "language": "de",
-        "purpose": "warn about water leak above",
+        "purpose": "ask whether there is water damage in his flat",
+        "attempt": 1,
         "dry_run": true
       }
     },
     {
-      "id": "e9",
+      "id": "e16",
       "case_id": "c1",
-      "at_s": 10,
-      "kind": "reasoning",
-      "actor": "dirigent",
+      "at_s": 14,
+      "kind": "call_ended",
+      "actor": "resident_call",
       "payload": {
-        "text": "1.1 is two floors below: low risk, a message is enough."
+        "to_tenant_id": "t21",
+        "attempt": 1,
+        "outcome": "no_answer",
+        "damage_found": null,
+        "duration_s": 0,
+        "summary": "No answer."
       }
     },
     {
-      "id": "e10",
+      "id": "e17",
       "case_id": "c1",
-      "at_s": 11,
+      "at_s": 15,
       "kind": "message",
       "actor": "dirigent",
       "payload": {
-        "to": "t11",
-        "text": "Guten Tag Herr Becker, in Ihrem Haus gibt es einen Wasserschaden zwei Etagen ueber Ihnen. Wir kuemmern uns darum und melden uns, falls Sie etwas tun muessen."
+        "to": "t21",
+        "text": "Guten Tag Herr Krueger, ueber Ihrer Wohnung gibt es einen Wasserschaden. Bitte pruefen Sie Ihre Decke im Wohnzimmer. Das Wasser in Ihrem Strang ist voruebergehend abgestellt. Wir rufen Sie gleich noch einmal an."
       }
     },
     {
-      "id": "e11",
+      "id": "e18",
       "case_id": "c1",
-      "at_s": 14,
+      "at_s": 16,
+      "kind": "call_retry_scheduled",
+      "actor": "dirigent",
+      "payload": {
+        "to_tenant_id": "t21",
+        "attempt": 2,
+        "at": "2026-11-20T13:40:22+01:00"
+      }
+    },
+    {
+      "id": "e19",
+      "case_id": "c1",
+      "at_s": 17,
       "kind": "photo",
       "actor": "tenant_intake",
       "payload": {
         "url": "/mock/demo-ceiling.jpg",
         "assessment": {
-          "damage": "water stain and dripping at ceiling joint",
+          "damage": "water stain and dripping at a ceiling joint next to the ceiling lamp",
           "severity": 4,
           "urgent": true,
-          "electrics": false
+          "electrics": true
         }
       }
     },
     {
-      "id": "e12",
+      "id": "e20",
       "case_id": "c1",
-      "at_s": 16,
+      "at_s": 18,
       "kind": "reasoning",
       "actor": "dirigent",
       "payload": {
-        "text": "Severity 4, urgent. Proposing the plumber connector (role plumber) to the property manager for approval."
+        "text": "Severity 4, urgent. Water next to the ceiling lamp: this job also needs an electrician. No electrician connected yet."
       }
     },
     {
-      "id": "e13",
+      "id": "e21",
       "case_id": "c1",
-      "at_s": 17,
+      "at_s": 19,
       "kind": "partner_job_proposed",
       "actor": "dirigent",
       "payload": {
@@ -173,49 +261,89 @@
         "shared": {
           "address": "Kaiserswerther Strasse 12, 40477 Duesseldorf",
           "unit_id": "3.1",
-          "access_info": "Main door code 4711#, key safe at cellar door 2580",
+          "caretaker_contact": "Hausmeister Peter Wolf (has keys)",
           "damage_photo": "/mock/demo-ceiling.jpg",
-          "damage_assessment": "water stain and dripping at ceiling joint, severity 4",
-          "tenant_availability": "Daniel Brooks: home today until 18:00",
+          "damage_assessment": "water at a ceiling joint next to the lamp, severity 4",
+          "tenant_availability": "Daniel Brooks: home today until 18:00, otherwise the caretaker opens",
           "affected_units": [
-            "2.1 (high)",
-            "1.1 (low)",
+            "3.1",
+            "2.1 (to check)",
             "cellar (check)"
           ]
         },
         "withheld": [
           "rent_arrears_eur",
+          "key_safe",
           "notes"
         ],
-        "briefing": "Urgent leak on riser A, 3rd floor west. Please also check 2.1 and the cellar."
+        "briefing": "Urgent leak on riser A, 3rd floor west, coming from above. Please also check 2.1 and the cellar. Caretaker Peter Wolf opens."
       }
     },
     {
-      "id": "e14",
+      "id": "e22",
       "case_id": "c1",
-      "at_s": 17,
+      "at_s": 19,
       "kind": "status_change",
       "actor": "dirigent",
       "payload": {
         "status": "pending_approval"
-      },
-      "pause_until_approved": true
-    },
-    {
-      "id": "e15",
-      "case_id": "c1",
-      "at_s": 20,
-      "kind": "partner_job_approved",
-      "actor": "property_manager",
-      "payload": {
-        "partner_id": "plumber_krause"
       }
     },
     {
-      "id": "e16",
+      "id": "e23",
       "case_id": "c1",
-      "at_s": 20,
-      "kind": "partner_job",
+      "at_s": 22,
+      "kind": "call_started",
+      "actor": "dirigent",
+      "payload": {
+        "to_tenant_id": "t21",
+        "language": "de",
+        "purpose": "ask whether there is water damage in his flat",
+        "attempt": 2,
+        "dry_run": true
+      }
+    },
+    {
+      "id": "e24",
+      "case_id": "c1",
+      "at_s": 30,
+      "kind": "call_ended",
+      "actor": "resident_call",
+      "payload": {
+        "to_tenant_id": "t21",
+        "attempt": 2,
+        "outcome": "answered",
+        "damage_found": true,
+        "duration_s": 58,
+        "summary": "Herr Krueger sees a wet spot on his living-room ceiling. Home all afternoon."
+      }
+    },
+    {
+      "id": "e25",
+      "case_id": "c1",
+      "at_s": 31,
+      "kind": "affected",
+      "actor": "dirigent",
+      "payload": {
+        "unit_id": "2.1",
+        "risk": "confirmed"
+      }
+    },
+    {
+      "id": "e26",
+      "case_id": "c1",
+      "at_s": 32,
+      "kind": "reasoning",
+      "actor": "dirigent",
+      "payload": {
+        "text": "2.1 confirmed: added to the plumber job. Updating the proposal."
+      }
+    },
+    {
+      "id": "e27",
+      "case_id": "c1",
+      "at_s": 33,
+      "kind": "partner_job_proposed",
       "actor": "dirigent",
       "payload": {
         "partner_id": "plumber_krause",
@@ -223,195 +351,76 @@
         "shared": {
           "address": "Kaiserswerther Strasse 12, 40477 Duesseldorf",
           "unit_id": "3.1",
-          "access_info": "Main door code 4711#, key safe at cellar door 2580",
+          "caretaker_contact": "Hausmeister Peter Wolf (has keys)",
           "damage_photo": "/mock/demo-ceiling.jpg",
-          "damage_assessment": "water stain and dripping at ceiling joint, severity 4",
-          "tenant_availability": "Daniel Brooks: home today until 18:00",
+          "damage_assessment": "water at a ceiling joint next to the lamp, severity 4",
+          "tenant_availability": "Daniel Brooks: home today until 18:00, otherwise the caretaker opens",
           "affected_units": [
-            "2.1 (high)",
-            "1.1 (low)",
+            "3.1",
+            "2.1 (confirmed, wet ceiling)",
+            "1.1 (check)",
             "cellar (check)"
           ]
         },
         "withheld": [
           "rent_arrears_eur",
+          "key_safe",
           "notes"
         ],
-        "briefing": "Urgent leak on riser A, 3rd floor west. Please also check 2.1 and the cellar."
-      }
-    },
-    {
-      "id": "e17",
-      "case_id": "c1",
-      "at_s": 20,
-      "kind": "status_change",
-      "actor": "dirigent",
-      "payload": {
-        "status": "dispatched"
-      }
-    },
-    {
-      "id": "e18",
-      "case_id": "c1",
-      "at_s": 24,
-      "kind": "call_ended",
-      "actor": "resident_call",
-      "payload": {
-        "to_tenant_id": "t21",
-        "duration_s": 64,
-        "summary": "Herr Krueger informed, will move valuables, home all afternoon."
-      }
-    },
-    {
-      "id": "e19",
-      "case_id": "c1",
-      "at_s": 28,
-      "kind": "slot_confirmed",
-      "actor": "partner_call",
-      "payload": {
-        "slot": "16:00"
-      }
-    },
-    {
-      "id": "e20",
-      "case_id": "c1",
-      "at_s": 29,
-      "kind": "status_change",
-      "actor": "dirigent",
-      "payload": {
-        "status": "scheduled"
-      }
-    },
-    {
-      "id": "e21",
-      "case_id": "c1",
-      "at_s": 30,
-      "kind": "message",
-      "actor": "dirigent",
-      "payload": {
-        "to": "t31",
-        "text": "Your plumber Sanitaer Krause arrives today at 16:00."
-      }
-    },
-    {
-      "id": "e22",
-      "case_id": "c1",
-      "at_s": 40,
-      "kind": "result",
-      "actor": "partner_call",
-      "payload": {
-        "cost_eur": 340,
-        "work_description": "Replaced leaking pipe joint on riser A, 3rd floor. Cellar checked, dry."
-      }
-    },
-    {
-      "id": "e23",
-      "case_id": "c1",
-      "at_s": 41,
-      "kind": "maintenance_log",
-      "actor": "dirigent",
-      "payload": {
-        "unit_id": "3.1",
-        "partner_id": "plumber_krause",
-        "work_description": "Replaced leaking pipe joint on riser A, 3rd floor. Cellar checked, dry.",
-        "cost_eur": 340
-      }
-    },
-    {
-      "id": "e24",
-      "case_id": "c1",
-      "at_s": 42,
-      "kind": "status_change",
-      "actor": "dirigent",
-      "payload": {
-        "status": "resolved"
-      }
-    },
-    {
-      "id": "e25",
-      "case_id": "c1",
-      "at_s": 43,
-      "kind": "message",
-      "actor": "dirigent",
-      "payload": {
-        "to": "owner",
-        "text": "Water leak 3.1 fixed by Sanitaer Krause, 340 EUR (below your approval limit of 500 EUR). Logged in the maintenance log."
-      }
-    },
-    {
-      "id": "e26",
-      "case_id": "c1",
-      "at_s": 44,
-      "kind": "message",
-      "actor": "dirigent",
-      "payload": {
-        "to": "t21",
-        "text": "Die Reparatur ist abgeschlossen. Vielen Dank fuer Ihre Geduld."
-      }
-    },
-    {
-      "id": "e27",
-      "case_id": "c1",
-      "at_s": 45,
-      "kind": "cost",
-      "actor": "dirigent",
-      "payload": {
-        "total_eur": 0.94,
-        "breakdown": {
-          "voice_eur": 0.55,
-          "phone_eur": 0.17,
-          "openai_eur": 0.22
-        }
+        "briefing": "Urgent leak on riser A, 3rd floor west, coming from above. Riser A valve is closed (cellar, left wall behind door K1). 2.1 below has a wet ceiling, please also check 1.1 and the cellar. Caretaker Peter Wolf opens."
       }
     },
     {
       "id": "e28",
       "case_id": null,
-      "at_s": 55,
+      "at_s": 36,
       "kind": "connector_drafted",
-      "actor": "dirigent",
+      "actor": "julian",
       "payload": {
         "connector": {
-          "partner_id": "isp_rheinnet",
-          "role": "isp",
-          "category": "internet",
-          "mode": "sell",
+          "partner_id": "electrician_schmitz",
+          "role": "electrician",
+          "category": "repairs",
+          "mode": "deliver",
           "detect": {
             "events": [
-              "move_in"
-            ]
+              "water_leak_near_electrics",
+              "power_outage"
+            ],
+            "conditions": "photo assessment electrics = true"
           },
           "handover": {
             "required": [
-              "tenant_name",
-              "move_in_date",
+              "address",
               "unit_id",
-              "phone",
-              "internet_line_id"
+              "caretaker_contact",
+              "damage_photo",
+              "damage_assessment",
+              "tenant_availability"
             ],
             "never": [
-              "rent_arrears_eur"
+              "rent_arrears_eur",
+              "key_safe"
             ]
           },
           "conversation": {
-            "channel": "message",
-            "goal": "send the pre-filled order"
-          },
-          "resident_contact": {
-            "channel": "phone",
-            "agent": "resident_call",
-            "goal": "confirm tariff and activation date"
+            "channel": "browser",
+            "agent": "partner_call",
+            "language": "de",
+            "goal": "confirm the earliest slot to check the ceiling lamp and wiring, ideally together with the plumber"
           },
           "close_loop": {
             "result_fields": [
-              "contract_signed",
-              "activation_date"
+              "slot",
+              "cost_eur",
+              "work_description"
             ],
-            "write_to_property": "unit_record",
+            "write_to_property": "maintenance_log",
             "notify": [
               "tenant",
               "owner"
-            ]
+            ],
+            "approval_over_eur": 500
           },
           "cost_rule": "voice only if urgent, language barrier or new resident without portal; otherwise message"
         }
@@ -420,87 +429,383 @@
     {
       "id": "e29",
       "case_id": null,
-      "at_s": 58,
+      "at_s": 40,
       "kind": "connector_activated",
-      "actor": "julian",
+      "actor": "property_manager",
       "payload": {
-        "partner_id": "isp_rheinnet"
+        "partner_id": "electrician_schmitz"
       }
     },
     {
       "id": "e30",
-      "case_id": "c2",
-      "at_s": 60,
-      "kind": "case_created",
-      "actor": "centrix",
+      "case_id": "c1",
+      "at_s": 41,
+      "kind": "partner_job_proposed",
+      "actor": "dirigent",
       "payload": {
-        "type": "move_in",
-        "unit_id": "4.2",
-        "tenant_id": "t42n",
-        "description": "Lucas Laurent moves into 4.2 on 2026-12-01"
+        "partner_id": "electrician_schmitz",
+        "role": "electrician",
+        "shared": {
+          "address": "Kaiserswerther Strasse 12, 40477 Duesseldorf",
+          "unit_id": "3.1",
+          "caretaker_contact": "Hausmeister Peter Wolf (has keys)",
+          "damage_photo": "/mock/demo-ceiling.jpg",
+          "damage_assessment": "water next to the ceiling lamp",
+          "tenant_availability": "Daniel Brooks: home today until 18:00, otherwise the caretaker opens"
+        },
+        "withheld": [
+          "rent_arrears_eur",
+          "key_safe",
+          "notes"
+        ],
+        "briefing": "Water came through the ceiling next to the living-room lamp in 3.1. Please check lamp and wiring, ideally together with the plumber."
       }
     },
     {
       "id": "e31",
-      "case_id": "c2",
-      "at_s": 62,
-      "kind": "reasoning",
+      "case_id": "c1",
+      "at_s": 42,
+      "kind": "status_change",
       "actor": "dirigent",
       "payload": {
-        "text": "Move-in detected. Active connector isp_rheinnet matches move_in. Preparing order and calling Lucas in French (new resident, no portal yet)."
-      }
+        "status": "pending_approval"
+      },
+      "pause_until_approved": true
     },
     {
       "id": "e32",
-      "case_id": "c2",
-      "at_s": 63,
-      "kind": "order",
-      "actor": "dirigent",
+      "case_id": "c1",
+      "at_s": 45,
+      "kind": "partner_job_approved",
+      "actor": "property_manager",
       "payload": {
-        "partner_id": "isp_rheinnet",
-        "fields": {
-          "tenant_name": "Lucas Laurent",
-          "move_in_date": "2026-12-01",
-          "unit_id": "4.2",
-          "address": "Kaiserswerther Strasse 12, 40477 Duesseldorf",
-          "internet_line_id": "DSL-4711-0042",
-          "tariff": "Glasfaser 500"
-        }
+        "partner_id": "plumber_krause"
       }
     },
     {
       "id": "e33",
-      "case_id": "c2",
-      "at_s": 64,
-      "kind": "call_started",
+      "case_id": "c1",
+      "at_s": 45,
+      "kind": "partner_job",
       "actor": "dirigent",
       "payload": {
-        "to_tenant_id": "t42n",
-        "language": "fr",
-        "purpose": "confirm internet tariff and activation date",
-        "dry_run": true
+        "partner_id": "plumber_krause",
+        "role": "plumber",
+        "shared": {
+          "address": "Kaiserswerther Strasse 12, 40477 Duesseldorf",
+          "unit_id": "3.1",
+          "caretaker_contact": "Hausmeister Peter Wolf (has keys)",
+          "damage_photo": "/mock/demo-ceiling.jpg",
+          "damage_assessment": "water at a ceiling joint next to the lamp, severity 4",
+          "tenant_availability": "Daniel Brooks: home today until 18:00, otherwise the caretaker opens",
+          "affected_units": [
+            "3.1",
+            "2.1 (confirmed, wet ceiling)",
+            "1.1 (check)",
+            "cellar (check)"
+          ]
+        },
+        "withheld": [
+          "rent_arrears_eur",
+          "key_safe",
+          "notes"
+        ],
+        "briefing": "Urgent leak on riser A, 3rd floor west, coming from above. Riser A valve is closed (cellar, left wall behind door K1). 2.1 below has a wet ceiling, please also check 1.1 and the cellar. Caretaker Peter Wolf opens."
       }
     },
     {
       "id": "e34",
-      "case_id": "c2",
-      "at_s": 75,
-      "kind": "call_ended",
-      "actor": "resident_call",
+      "case_id": "c1",
+      "at_s": 46,
+      "kind": "partner_job_approved",
+      "actor": "property_manager",
       "payload": {
-        "to_tenant_id": "t42n",
-        "duration_s": 58,
-        "summary": "Lucas confirmed Glasfaser 500, activation on 1 December."
+        "partner_id": "electrician_schmitz"
       }
     },
     {
       "id": "e35",
-      "case_id": "c2",
-      "at_s": 76,
+      "case_id": "c1",
+      "at_s": 46,
+      "kind": "partner_job",
+      "actor": "dirigent",
+      "payload": {
+        "partner_id": "electrician_schmitz",
+        "role": "electrician",
+        "shared": {
+          "address": "Kaiserswerther Strasse 12, 40477 Duesseldorf",
+          "unit_id": "3.1",
+          "caretaker_contact": "Hausmeister Peter Wolf (has keys)",
+          "damage_photo": "/mock/demo-ceiling.jpg",
+          "damage_assessment": "water next to the ceiling lamp",
+          "tenant_availability": "Daniel Brooks: home today until 18:00, otherwise the caretaker opens"
+        },
+        "withheld": [
+          "rent_arrears_eur",
+          "key_safe",
+          "notes"
+        ],
+        "briefing": "Water came through the ceiling next to the living-room lamp in 3.1. Please check lamp and wiring, ideally together with the plumber."
+      }
+    },
+    {
+      "id": "e36",
+      "case_id": "c1",
+      "at_s": 47,
+      "kind": "status_change",
+      "actor": "dirigent",
+      "payload": {
+        "status": "dispatched"
+      }
+    },
+    {
+      "id": "e37",
+      "case_id": "c1",
+      "at_s": 52,
+      "kind": "slot_confirmed",
+      "actor": "partner_call",
+      "payload": {
+        "partner_id": "plumber_krause",
+        "slot": "16:00"
+      }
+    },
+    {
+      "id": "e38",
+      "case_id": "c1",
+      "at_s": 55,
+      "kind": "slot_confirmed",
+      "actor": "partner_call",
+      "payload": {
+        "partner_id": "electrician_schmitz",
+        "slot": "16:00"
+      }
+    },
+    {
+      "id": "e39",
+      "case_id": "c1",
+      "at_s": 56,
+      "kind": "status_change",
+      "actor": "dirigent",
+      "payload": {
+        "status": "scheduled"
+      }
+    },
+    {
+      "id": "e40",
+      "case_id": "c1",
+      "at_s": 57,
+      "kind": "message",
+      "actor": "dirigent",
+      "payload": {
+        "to": "t31",
+        "text": "Your plumber and electrician arrive today at 16:00. If you are not home, caretaker Peter Wolf will open."
+      }
+    },
+    {
+      "id": "e41",
+      "case_id": "c1",
+      "at_s": 57,
+      "kind": "message",
+      "actor": "dirigent",
+      "payload": {
+        "to": "t21",
+        "text": "Heute um 16:00 kommt der Installateur und schaut sich auch Ihre Decke an."
+      }
+    },
+    {
+      "id": "e42",
+      "case_id": "c1",
+      "at_s": 58,
+      "kind": "message",
+      "actor": "dirigent",
+      "payload": {
+        "to": "caretaker",
+        "text": "Today 16:00: plumber and electrician at Kaiserswerther Strasse 12, flats 3.1 and 2.1 and the cellar. Please open if the tenants are not home."
+      }
+    },
+    {
+      "id": "e43",
+      "case_id": "c1",
+      "at_s": 66,
+      "kind": "result",
+      "actor": "partner_call",
+      "payload": {
+        "partner_id": "plumber_krause",
+        "cost_eur": 340,
+        "work_description": "Replaced a leaking pipe joint on riser A between 4th and 3rd floor. 2.1 ceiling dried, cellar dry."
+      }
+    },
+    {
+      "id": "e44",
+      "case_id": "c1",
+      "at_s": 67,
+      "kind": "maintenance_log",
+      "actor": "dirigent",
+      "payload": {
+        "unit_id": "3.1",
+        "partner_id": "plumber_krause",
+        "work_description": "Replaced a leaking pipe joint on riser A between 4th and 3rd floor. 2.1 ceiling dried, cellar dry.",
+        "cost_eur": 340
+      }
+    },
+    {
+      "id": "e45",
+      "case_id": "c1",
+      "at_s": 70,
+      "kind": "result",
+      "actor": "partner_call",
+      "payload": {
+        "partner_id": "electrician_schmitz",
+        "cost_eur": 120,
+        "work_description": "Ceiling lamp removed, socket box dried and tested, safe."
+      }
+    },
+    {
+      "id": "e46",
+      "case_id": "c1",
+      "at_s": 71,
+      "kind": "maintenance_log",
+      "actor": "dirigent",
+      "payload": {
+        "unit_id": "3.1",
+        "partner_id": "electrician_schmitz",
+        "work_description": "Ceiling lamp removed, socket box dried and tested, safe.",
+        "cost_eur": 120
+      }
+    },
+    {
+      "id": "e47",
+      "case_id": "c1",
+      "at_s": 72,
+      "kind": "affected",
+      "actor": "dirigent",
+      "payload": {
+        "unit_id": "3.1",
+        "risk": "clear"
+      }
+    },
+    {
+      "id": "e48",
+      "case_id": "c1",
+      "at_s": 72,
+      "kind": "affected",
+      "actor": "dirigent",
+      "payload": {
+        "unit_id": "2.1",
+        "risk": "clear"
+      }
+    },
+    {
+      "id": "e49",
+      "case_id": "c1",
+      "at_s": 72,
+      "kind": "affected",
+      "actor": "dirigent",
+      "payload": {
+        "unit_id": "4.1",
+        "risk": "clear"
+      }
+    },
+    {
+      "id": "e50",
+      "case_id": "c1",
+      "at_s": 72,
+      "kind": "affected",
+      "actor": "dirigent",
+      "payload": {
+        "unit_id": "cellar",
+        "risk": "clear"
+      }
+    },
+    {
+      "id": "e51",
+      "case_id": "c1",
+      "at_s": 72,
+      "kind": "affected",
+      "actor": "dirigent",
+      "payload": {
+        "unit_id": "1.1",
+        "risk": "clear"
+      }
+    },
+    {
+      "id": "e52",
+      "case_id": "c1",
+      "at_s": 73,
       "kind": "status_change",
       "actor": "dirigent",
       "payload": {
         "status": "resolved"
+      }
+    },
+    {
+      "id": "e53",
+      "case_id": "c1",
+      "at_s": 74,
+      "kind": "message",
+      "actor": "dirigent",
+      "payload": {
+        "to": "owner",
+        "text": "Water leak at Kaiserswerther Strasse 12 fixed: plumber 340 EUR, electrician 120 EUR (each below your approval limit of 500 EUR). Both logged in the maintenance log."
+      }
+    },
+    {
+      "id": "e54",
+      "case_id": "c1",
+      "at_s": 75,
+      "kind": "message",
+      "actor": "dirigent",
+      "payload": {
+        "to": "t31",
+        "text": "All done: the leak is fixed, the lamp is checked and safe, and the water is back on. Thank you for your patience."
+      }
+    },
+    {
+      "id": "e55",
+      "case_id": "c1",
+      "at_s": 75,
+      "kind": "message",
+      "actor": "dirigent",
+      "payload": {
+        "to": "t41",
+        "text": "The leak is fixed and the water on your riser is back on. Thank you for checking."
+      }
+    },
+    {
+      "id": "e56",
+      "case_id": "c1",
+      "at_s": 75,
+      "kind": "message",
+      "actor": "dirigent",
+      "payload": {
+        "to": "t21",
+        "text": "Der Schaden ist behoben, das Wasser laeuft wieder. Vielen Dank fuer Ihre Geduld."
+      }
+    },
+    {
+      "id": "e57",
+      "case_id": "c1",
+      "at_s": 75,
+      "kind": "message",
+      "actor": "dirigent",
+      "payload": {
+        "to": "t11",
+        "text": "Das Wasser in Ihrem Strang laeuft wieder. Vielen Dank fuer Ihre Geduld."
+      }
+    },
+    {
+      "id": "e58",
+      "case_id": "c1",
+      "at_s": 76,
+      "kind": "cost",
+      "actor": "dirigent",
+      "payload": {
+        "total_eur": 1.08,
+        "breakdown": {
+          "voice_eur": 0.62,
+          "phone_eur": 0.12,
+          "openai_eur": 0.34
+        }
       }
     }
   ]

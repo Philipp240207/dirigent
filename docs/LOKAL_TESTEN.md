@@ -53,7 +53,7 @@ Warten auf `Ready` und `http://localhost:3000`. Fenster offen lassen. Beenden mi
 |---|---|
 | http://localhost:3000/dashboard | Haus, Dirigent-Schritte, Outbox, Kosten, Connector-Bildschirm |
 | http://localhost:3000/tenant/3.1 | Daniel meldet den Schaden (Mikrofon erlauben) |
-| http://localhost:3000/partner/CASE_ID | Installateur-Ansicht (Link im Dashboard) |
+| http://localhost:3000/partner/CASE_ID?partner=plumber_krause | Installateur-Ansicht (Link im Dashboard) |
 | http://localhost:3000/track/CASE_ID | Tracking-Seite (Link im Dashboard) |
 
 **Immer `localhost` benutzen**, sonst blockiert der Browser das Mikrofon.
@@ -64,10 +64,10 @@ Warten auf `Ready` und `http://localhost:3000`. Fenster offen lassen. Beenden mi
 
 | Person | Einstellung | Test |
 |---|---|---|
-| Philipp | `NEXT_PUBLIC_MOCK=true` | Dashboard öffnen: die ganze Demo spielt sich mit Testdaten ab und hält beim Freigabe-Schritt an, bis du "Approve and send" klickst. Keine Keys, kein Server nötig |
+| Philipp | `NEXT_PUBLIC_MOCK=true` | Dashboard öffnen: der ganze Wasserschaden-Fall spielt sich mit Testdaten ab und hält bei der Freigabe an, bis du "Approve and send" klickst. Keine Keys, kein Server nötig |
 | Emil | `CALLS_DRY_RUN=true` | curl-Befehle aus Teil 4, Ergebnis mit `curl http://localhost:3000/api/state` prüfen |
 | Julian | keine | Agents im ElevenLabs-Testfenster. Client-Tools funktionieren erst beim Zusammenstecken |
-| Alle zusammen (19:00, 22:00, 24:00) | Demo-Laptop, `NEXT_PUBLIC_MOCK=false`, ab 22:00 `CALLS_DRY_RUN=false` | ganzer Ablauf mit echten Stimmen |
+| Alle zusammen (22:00, 24:00) | Demo-Laptop, `NEXT_PUBLIC_MOCK=false`, ab 22:00 `CALLS_DRY_RUN=false` | ganzer Ablauf mit echten Stimmen |
 
 **Tracking-Seite auf einem echten Handy:** Handy im selben WLAN, im Browser `http://IP-DES-LAPTOPS:3000/track/CASE_ID` öffnen (IP am Mac: Systemeinstellungen → WLAN → Details). Wenn das Hackathon-WLAN das blockiert: in Chrome auf dem Laptop Rechtsklick → Untersuchen → Handy-Symbol (iPhone-Rahmen) und so aufnehmen.
 
@@ -75,7 +75,7 @@ Warten auf `Ready` und `http://localhost:3000`. Fenster offen lassen. Beenden mi
 
 ## Teil 4: curl-Tests (Emil, und alle zur Kontrolle)
 
-Zweites Terminal-Fenster öffnen (die App läuft im ersten weiter). Windows: in **Git Bash**.
+Zweites Terminal-Fenster öffnen (die App läuft im ersten weiter). Windows: in **Git Bash**. Für schnelle Tests in `.env.local`: `RETRY_DELAY_MINUTES=1`, `CALLS_DRY_RUN=true`.
 
 **0. Alles zurücksetzen**
 ```
@@ -86,72 +86,68 @@ curl -X POST http://localhost:3000/api/reset
 ```
 curl -X POST http://localhost:3000/api/cases \
   -H "Content-Type: application/json" \
-  -d '{"unit_id":"3.1","description":"Water is dripping from the ceiling in the living room","tenant_language":"en"}'
+  -d '{"unit_id":"3.1","description":"Water is dripping from the living-room ceiling next to the ceiling lamp","tenant_language":"en"}'
 ```
-Erwartet: sofort `{"case_id":"..."}` (kopieren). Nach einigen Sekunden in `/api/state`: `affected` für 3.1, 2.1, 1.1, cellar, `call_started` an t21 mit `dry_run: true`, `message` an t11, `partner_job_proposed` für `plumber_krause` und Status `pending_approval`.
+Erwartet: sofort `{"case_id":"..."}` (kopieren). In `/api/state` nach wenigen Sekunden: `affected` 4.1 `source`, 2.1 `high`, cellar `check`; `message` an t41; `call_started` an t21 (attempt 1); `call_ended` mit `outcome: "no_answer"`; `message` an t21; `call_retry_scheduled`; `partner_job_proposed` für `plumber_krause`; Status `pending_approval`.
 
-**2. Zustand ansehen**
+**2. Zweiter Anruf** (nach `RETRY_DELAY_MINUTES`, also 1 Minute warten)
 ```
 curl http://localhost:3000/api/state
 ```
+Erwartet: `call_started` attempt 2, `call_ended` mit `outcome: "answered"` und `damage_found: true`, `affected` 2.1 `confirmed`.
 
-**3. Foto hochladen** (Pfad zu einem Bild anpassen)
+**3. Foto hochladen** (Pfad anpassen)
 ```
 curl -X POST http://localhost:3000/api/cases/CASE_ID/photo -F "file=@/Users/NAME/Desktop/ceiling.jpg"
 ```
-Erwartet: `url` und `assessment` mit `severity`.
+Erwartet: `assessment` mit `severity`. Wenn das Foto eine Lampe neben dem Wasser zeigt: `electrics: true` und ein `reasoning` "No electrician connected yet".
 
-**4. Vor der Freigabe darf der Installateur nichts sehen**
+**4. Vor der Freigabe sieht der Installateur nichts**
 ```
-curl -i "http://localhost:3000/api/partner-job?case_id=CASE_ID"
+curl -i "http://localhost:3000/api/partner-job?case_id=CASE_ID&partner_id=plumber_krause"
 ```
-Erwartet: Fehler (z. B. `403`), kein Auftrag.
+Erwartet: Fehler (z. B. `403`).
 
-**5. Hausverwaltung gibt frei ("Approve and send")**
+**5. Freigabe ("Approve and send")**
 ```
-curl -X POST http://localhost:3000/api/cases/CASE_ID/approve
+curl -X POST http://localhost:3000/api/cases/CASE_ID/approve \
+  -H "Content-Type: application/json" -d '{"partner_id":"plumber_krause"}'
 ```
-Erwartet: `{"ok":true}`, Ereignisse `partner_job_approved` (actor `property_manager`) und `partner_job`, Status `dispatched`. Den Befehl ein zweites Mal ausführen: es darf **kein** zweites `partner_job` entstehen.
+Erwartet: `partner_job_approved`, `partner_job`, Status `dispatched`. Ein zweites Mal ausführen: **kein** zweites `partner_job`.
 
-**6. Jetzt der Auftrag für den Installateur**
+**6. Auftrag für den Installateur**
 ```
-curl "http://localhost:3000/api/partner-job?case_id=CASE_ID"
+curl "http://localhost:3000/api/partner-job?case_id=CASE_ID&partner_id=plumber_krause"
 ```
-Erwartet: `shared` mit Adresse, Zugang, betroffenen Wohnungen. `withheld` enthält `rent_arrears_eur`.
+Erwartet: `shared` mit Adresse, Hausmeister-Kontakt, betroffenen Wohnungen (2.1 bestätigt). `withheld` enthält `rent_arrears_eur` und `key_safe`.
 
 **7. Termin bestätigen**
 ```
 curl -X POST http://localhost:3000/api/cases/CASE_ID/slot \
-  -H "Content-Type: application/json" -d '{"slot":"16:00"}'
+  -H "Content-Type: application/json" -d '{"partner_id":"plumber_krause","slot":"16:00"}'
 ```
+Erwartet: Nachrichten an t31, t21 und `caretaker`.
 
 **8. "Fertig, 340 €"**
 ```
 curl -X POST http://localhost:3000/api/cases/CASE_ID/result \
   -H "Content-Type: application/json" \
-  -d '{"cost_eur":340,"work_description":"Replaced leaking pipe joint on riser A, 3rd floor. Cellar checked, dry."}'
+  -d '{"partner_id":"plumber_krause","cost_eur":340,"work_description":"Replaced a leaking pipe joint on riser A. 2.1 ceiling dried, cellar dry."}'
 ```
-Erwartet: `maintenance_log`, `status_change` auf `resolved`, Nachrichten an Mieter und `owner`.
+Erwartet: `maintenance_log`. Wenn kein weiterer Partner offen ist: Status `resolved`, Nachricht an `owner`, `cost`.
 
-**9. Connector aus Webseitentext erzeugen und aktivieren** (Stufe 2)
+**9. Elektriker live anbinden (Stufe 2)**
 ```
 curl -X POST http://localhost:3000/api/connectors/draft \
   -H "Content-Type: application/json" \
-  -d '{"partner_text":"RheinNet Glasfaser GmbH. Fibre internet for new tenants. To order we need name, move-in date, address, unit and the existing line ID."}'
+  -d '{"partner_text":"Elektro Schmitz, Duesseldorf. Electrical repairs and emergency service. For a job we need the address, the flat, a photo of the problem and who opens the door."}'
 ```
-Erwartet: `connector` mit `role: "isp"`, der gegen `connectors/schema.json` gültig ist. Dann diesen `connector` aktivieren:
+Erwartet: `connector` mit `role: "electrician"`, gültig gegen `connectors/schema.json`. Dann aktivieren, mit dem Fall:
 ```
 curl -X POST http://localhost:3000/api/connectors/activate \
-  -H "Content-Type: application/json" -d '{"connector": HIER_DAS_JSON_VON_OBEN}'
+  -H "Content-Type: application/json" -d '{"connector": HIER_DAS_JSON_VON_OBEN, "case_id":"CASE_ID"}'
 ```
-
-**10. Lucas zieht ein** (nach Schritt 9)
-```
-curl -X POST http://localhost:3000/api/events \
-  -H "Content-Type: application/json" \
-  -d '{"type":"move_in","unit_id":"4.2","tenant_id":"t42n","date":"2026-12-01"}'
-```
-Erwartet: `order` an `isp_rheinnet` (bzw. die erzeugte partner_id) und `call_started` an t42n auf Französisch.
+Erwartet: `connector_activated` und `partner_job_proposed` für den Elektriker. Danach Schritte 5 bis 8 mit dessen `partner_id`.
 
 Regel für Codex und Claude: Jede neue API-Route bekommt hier einen Test.
 
@@ -180,6 +176,8 @@ Regel für Codex und Claude: Jede neue API-Route bekommt hier einen Test.
 | Agent hört mich nicht | Adresse muss `localhost` sein. Chrome: Schloss links neben der Adresse → Mikrofon erlauben. Zoom/FaceTime schließen |
 | Agent ruft ein Tool auf, nichts passiert | Name und Parameter im ElevenLabs-Dashboard müssen genau wie in CLAUDE.md 5.4 sein, Typ "Client" |
 | Kein echter Anruf | `CALLS_DRY_RUN=false`? Twilio-Nummer in ElevenLabs dem Agent `resident_call` zugewiesen? Geo-Permissions NL/DE an? |
+| Zweiter Anruf kommt nie, oder Seiten zeigen verschiedene Stände | Zustand und Timer müssen an `globalThis` hängen (CLAUDE.md 7.1). Für den Dreh: `npm run build`, dann `npm start` statt `npm run dev` |
+| Uhrzeiten auf dem Bildschirm stimmen nicht | `DEMO_NOW` in `.env.local` gesetzt? Neu starten, dann "Reset demo" |
 | Alte Daten im Dashboard | Knopf "Reset demo" oder curl-Test 0 |
 | Merge-Konflikt | Codex/Claude: "Erklär mir diesen Konflikt und löse ihn so, dass beide Änderungen erhalten bleiben" |
 
