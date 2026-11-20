@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     created_at: now().toISOString(),
   };
 
-  const { events, liveCalls } = buildLeakTimeline(demoCase, input.description);
+  const { events, residentCalls } = buildLeakTimeline(demoCase, input.description);
   saveNewCase({ ...demoCase, status: "pending_approval" }, [
     {
       case_id: demoCase.id,
@@ -44,9 +44,9 @@ export async function POST(request: Request) {
     ...events,
   ]);
 
-  if (liveCalls.length) {
+  if (residentCalls.length) {
     after(async () => {
-      await Promise.all(liveCalls.map(startResidentCall));
+      await Promise.all(residentCalls.map((call) => startResidentCall(call)));
     });
   }
 
