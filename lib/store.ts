@@ -4,6 +4,7 @@ import { join } from "node:path";
 
 import building from "../data/building.json";
 import plumber from "../connectors/plumber_krause.json";
+import { findRiser } from "./building";
 import { now, resetClock } from "./clock";
 
 export type CaseStatus = "open" | "pending_approval" | "dispatched" | "scheduled" | "resolved";
@@ -223,6 +224,16 @@ export function updatePlumberJob(caseId: string, update: PlumberUpdate) {
         text: `Plumbing repair for unit ${demoCase.unit_id} completed for EUR ${update.payload.cost_eur}. ${update.payload.work_description}`,
       },
     });
+    const riser = findRiser(demoCase.unit_id);
+    if (riser && isWaterOff(caseId)) {
+      updates.push({
+        case_id: caseId, kind: "message", actor: "dirigent",
+        payload: {
+          to: "caretaker",
+          text: `The plumber has finished. Please reopen the main valve for ${riser.id} at ${riser.main_valve} and confirm once water service is restored.`,
+        },
+      });
+    }
   }
 
   saveState({
@@ -230,6 +241,49 @@ export function updatePlumberJob(caseId: string, update: PlumberUpdate) {
     cases: state.cases.map((item) => item.id === caseId ? { ...item, status } : item),
     events: [...state.events, ...updates.map(stampEvent)],
   });
+  return "ok";
+}
+
+export function isWaterOff(caseId: string): boolean {
+  const latest = currentState().events.findLast((event) =>
+    event.case_id === caseId && event.kind === "water_status_confirmed",
+  );
+  return latest?.payload.status === "off";
+}
+
+export function confirmWaterStatus(caseId: string, status: "off" | "restored") {
+  const state = currentState();
+  const demoCase = state.cases.find((item) => item.id === caseId);
+  if (!demoCase) return "missing";
+
+  const riser = findRiser(demoCase.unit_id);
+  const events = state.events.filter((event) => event.case_id === caseId);
+  if (!riser || !events.some((event) => event.kind === "water_shutoff_requested")) return "conflict";
+
+  const latest = events.findLast((event) => event.kind === "water_status_confirmed");
+  if (latest?.payload.status === status) return "ok";
+  if (status === "off" ? latest || demoCase.status === "resolved" :
+    latest?.payload.status !== "off" || !events.some((event) => event.kind === "result")) {
+    return "conflict";
+  }
+
+  const updates: NewEvent[] = [{
+    case_id: caseId, kind: "water_status_confirmed", actor: "caretaker",
+    payload: { riser_id: riser.id, status },
+  }];
+  const recipients = new Set(building.units.filter((unit) => riser.units.includes(unit.id)).map((unit) => unit.tenant_id));
+  for (const to of recipients) {
+    updates.push({
+      case_id: caseId, kind: "message", actor: "dirigent",
+      payload: {
+        to,
+        text: status === "off"
+          ? "The water on your riser is off for now while the leak is repaired."
+          : "The water on your riser is back on.",
+      },
+    });
+  }
+  saveState({ ...state, events: [...state.events, ...updates.map(stampEvent)] });
   return "ok";
 }
 
