@@ -12,3 +12,7 @@ export function buildingUnits(building: Building) {
     `${floor + 1}.1`, `${floor + 1}.2`,
   ]).flat()
 }
+
+export function buildingPortrait(building: Building) {
+  return building.id === scenarioBuilding.id ? "/mock/dirigent-building.svg" : `/mock/building-${building.id}.svg`
+}

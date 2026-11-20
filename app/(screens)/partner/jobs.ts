@@ -1,3 +1,4 @@
+import electric from "../../../fixtures/electrician-demo.json"
 import { buildings, scenarioBuilding, type Building } from "../../../client/buildings"
 import { demoJob, demoReport, demoResult, demoSlot } from "../../../client/state"
 
@@ -40,10 +41,26 @@ export const mainJob: Job = {
   result: { cost, description },
   initialStatus: "New",
   example: false,
-  access: shared.access_info,
+  access: shared.caretaker_contact,
   availability: shared.tenant_availability,
   assessment: shared.damage_assessment,
   affectedUnits: shared.affected_units,
+}
+
+export const electricJob: Job = {
+  id: caseId,
+  title: "Ceiling lamp inspection",
+  apartment: electric.proposal.shared.unit_id,
+  building: scenarioBuilding,
+  scope: electric.proposal.briefing,
+  priority: "Urgent",
+  slot: electric.slot,
+  result: { cost: electric.result.cost_eur, description: electric.result.work_description },
+  initialStatus: "New",
+  example: false,
+  access: electric.proposal.shared.caretaker_contact,
+  availability: electric.proposal.shared.tenant_availability,
+  assessment: electric.proposal.shared.damage_assessment,
 }
 
 export const jobs: Job[] = [

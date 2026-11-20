@@ -48,7 +48,9 @@ export function writeDemoSession(value: string) {
   if (value) window.sessionStorage.setItem(demoSessionKey, value)
   else {
     window.sessionStorage.removeItem(demoSessionKey)
+    window.sessionStorage.removeItem(replayKey)
     window.sessionStorage.removeItem(exampleJobsKey)
+    window.sessionStorage.removeItem(electricianKey)
   }
   window.dispatchEvent(new Event(demoSessionChanged))
 }
@@ -66,5 +68,48 @@ export function readExampleJobs() {
 export function writeExampleJob(id: string, status: string) {
   const jobs = JSON.parse(readExampleJobs() || "{}") as Record<string, string>
   window.sessionStorage.setItem(exampleJobsKey, JSON.stringify({ ...jobs, [id]: status }))
+  window.dispatchEvent(new Event(demoSessionChanged))
+}
+
+const electricianKey = "dirigent-c1-electrician"
+const electricianSteps = ["", "draft", "active", "sent", "confirmed", "reported"] as const
+export type ElectricianStep = typeof electricianSteps[number]
+
+export function readElectrician(): ElectricianStep {
+  return electricianSteps.find(step => step === window.sessionStorage.getItem(electricianKey)) ?? ""
+}
+
+export function advanceElectrician(next: ElectricianStep) {
+  if (electricianSteps.indexOf(next) !== electricianSteps.indexOf(readElectrician()) + 1) return
+  window.sessionStorage.setItem(electricianKey, next)
+  window.dispatchEvent(new Event(demoSessionChanged))
+}
+
+export function electricianDispatched(step: string) {
+  return step === "sent" || step === "confirmed" || step === "reported"
+}
+
+const replayKey = "dirigent-c1-replay"
+
+export function readReplayTime() {
+  const value = window.sessionStorage.getItem(replayKey)
+  const seconds = Number(value)
+  return value !== null && Number.isInteger(seconds) && seconds >= 0 ? Math.min(seconds, demoEnd) : -1
+}
+
+export function hasResidentReport() {
+  return Boolean(readDemoSession()) || readReplayTime() >= 0
+}
+
+export function saveReplayTime(seconds: number) {
+  const first = readReplayTime() < 0
+  window.sessionStorage.setItem(replayKey, String(seconds))
+  if (first) window.dispatchEvent(new Event(demoSessionChanged))
+}
+
+export function prepareElectricianReview() {
+  const current = readElectrician()
+  if (current !== "" && current !== "draft") return
+  window.sessionStorage.setItem(electricianKey, "active")
   window.dispatchEvent(new Event(demoSessionChanged))
 }

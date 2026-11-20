@@ -1,19 +1,32 @@
 "use client"
 
+import { HomeLink } from "../home-link"
 import Link from "next/link"
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
-import { buildings, buildingUnits, scenarioBuilding } from "../../../client/buildings"
+import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react"
+import { buildings, buildingPortrait, buildingUnits, scenarioBuilding, type Building } from "../../../client/buildings"
 import { advanceDemo, demoConnectorActivation, demoConnectorDraft, demoConnectorEnd, demoEnd, demoJob, demoMoveIn, demoReport, demoResult, demoSlot, emptyDemoSession, readConnectorDemo, readDemo, readDemoSession, readExampleJobs, subscribeDemoSession, writeDemoSession } from "../../../client/state"
 
 import { jobs, jobStatus } from "../partner/jobs"
+import electric from "../../../fixtures/electrician-demo.json"
+import { ElectricianConnector } from "./electrician-connector"
+import { advanceElectrician, readElectrician, electricianDispatched, prepareElectricianReview, readReplayTime, saveReplayTime } from "../../../client/state"
 import { ConnectorDemo } from "./connector-demo"
+import { JobContext } from "./job-context"
 import { PortfolioMap, type MapState } from "./portfolio-map"
 
 const rooms: Record<string, { x: number; y: number; width: number }> = {
   "3.1": { x: 88.5, y: 220.5, width: 216 },
   "2.1": { x: 88.5, y: 302.5, width: 216 },
   "1.1": { x: 88.5, y: 384.5, width: 216 },
+  "4.1": { x: 88.5, y: 138.5, width: 216 },
   cellar: { x: 88.5, y: 466.5, width: 511 },
+}
+const riskStyles: Record<string, { label: string; color: string }> = {
+  confirmed: { label: "Reported or confirmed", color: "#ff3b30" },
+  high: { label: "High risk", color: "#ff9500" },
+  source: { label: "Possible source", color: "#ffcc00" },
+  check: { label: "Inspection needed", color: "#858b8a" },
+  clear: { label: "Clear", color: "#34c759" },
 }
 const statusLabels: Record<string, string> = {
   open: "Reported",
@@ -23,8 +36,10 @@ const statusLabels: Record<string, string> = {
   resolved: "Repaired",
 }
 const recipients: Record<string, string> = {
-  t11: "Apartment 1.1",
+  t41: "Apartment 4.1",
   t21: "Apartment 2.1",
+  t11: "Apartment 1.1",
+  caretaker: "Caretaker Peter Wolf",
   t31: "Apartment 3.1",
   t42n: "Lucas Laurent",
   owner: "Property owner",
@@ -32,14 +47,52 @@ const recipients: Record<string, string> = {
 
 type DemoEvent = ReturnType<typeof readDemo>[number]
 
+function BuildingSection({ building, children }: { building: Building; children: ReactNode }) {
+  const apartments = `${buildingUnits(building).length} apartments`
+  return (
+    <details className="building-card section-fold" open>
+      <summary>
+        <img src={buildingPortrait(building)} alt="" />
+        <span>
+          <strong>Building section</strong>
+          <small>{building.id === scenarioBuilding.id ? `${apartments} · 2 water risers` : `${building.floors} floors · ${apartments}`}</small>
+        </span>
+      </summary>
+      {children}
+    </details>
+  )
+}
+
+const navPaths = {
+  Portfolio: "M3 20V8l6-4 6 4v12M15 10h5v10H3m4-9h4m-4 4h4",
+  Tasks: "M8 4h9v16H5V4h3m0 0v3h6V4m-6 9 2 2 4-5",
+  Activity: "M2 13h4l3-8 4 14 3-8 2 2h4",
+  Outbox: "M3 13l3-8h12l3 8v6H3zm0 0h5l1 3h6l1-3h5",
+  Chevron: "m9 5 7 7-7 7",
+  Connectors: "m9 8 4-4a4 4 0 0 1 6 6l-3 3m-1 3-4 4a4 4 0 0 1-6-6l3-3m1 3 6-6",
+}
+
+function NavIcon({ name }: { name: keyof typeof navPaths }) {
+  return <svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d={navPaths[name]} /></svg>
+}
+
+const overviewTitles = { tasks: "Tasks", portfolio: "Portfolio", activity: "Activity", outbox: "Outbox", connectors: "Connectors" }
 const recentActivityLimit = 5
 const exampleCases = jobs.filter((job) => job.example)
+const euro = new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR" })
+const manualCoordinationEstimate = 45
+const costItems = [["voice_eur", "ElevenLabs voice"], ["phone_eur", "Phone calls"], ["openai_eur", "OpenAI"]] as const
 
 const languageNames: Record<string, string> = { de: "German", en: "English", fr: "French" }
 
-function demoTime(seconds: number) {
-  const minutes = String(Math.floor(seconds / 60)).padStart(2, "0")
-  return `+${minutes}:${String(seconds % 60).padStart(2, "0")}`
+const demoStart = Date.parse("2026-11-20T13:40:00+01:00")
+const clockOptions = { timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit" } as const
+const retryClock = new Intl.DateTimeFormat("en-GB", clockOptions)
+const eventClock = new Intl.DateTimeFormat("en-GB", { ...clockOptions, second: "2-digit" })
+
+function DemoEventTime({ seconds }: { seconds: number }) {
+  const timestamp = new Date(demoStart + seconds * 1000)
+  return <time dateTime={timestamp.toISOString()} title="Berlin time">{eventClock.format(timestamp)}</time>
 }
 
 function activityEntry(event: DemoEvent) {
@@ -49,13 +102,16 @@ function activityEntry(event: DemoEvent) {
     case "case_created":
       return { title: payload.type === "water_leak" ? "Water leak reported" : "Move-in recorded", detail: `Apartment ${payload.unit_id}` }
     case "affected":
-      if (payload.unit_id === demoReport.payload.unit_id) return { title: "Leak source identified", detail: `Apartment ${payload.unit_id}` }
-      if (payload.risk === "check") return { title: "Cellar marked for inspection" }
-      return { title: `Apartment ${payload.unit_id} flagged`, detail: payload.risk === "high" ? "High risk" : "Low risk" }
+      return { title: payload.unit_id === "cellar" ? "Cellar" : `Apartment ${payload.unit_id}`, detail: riskStyles[payload.risk ?? ""]?.label }
     case "call_started":
-      return { title: `Call started · ${recipient}`, detail: [languageNames[payload.language ?? ""], payload.dry_run ? "Simulated call" : null].filter(Boolean).join(" · ") }
+      return { title: `Call started · ${recipient}`, detail: [payload.attempt && `Attempt ${payload.attempt}`, languageNames[payload.language ?? ""], payload.dry_run ? "Simulated call" : null].filter(Boolean).join(" · ") }
     case "call_ended":
-      return { title: `Call completed · ${recipient}`, detail: payload.summary }
+      return { title: `${payload.outcome === "no_answer" ? "No answer" : "Call completed"} · ${recipient}`, detail: payload.summary }
+    case "call_retry_scheduled": {
+      const at = Date.parse(payload.at ?? "")
+      const title = Number.isFinite(at) ? `Retry at ${retryClock.format(at)}` : "Retry scheduled"
+      return { title: `${title} · ${recipient}`, detail: payload.attempt && `Attempt ${payload.attempt}` }
+    }
     case "message":
       return { title: `Message queued · ${recipients[payload.to ?? ""] ?? payload.to}` }
     case "photo":
@@ -84,16 +140,20 @@ function activityEntry(event: DemoEvent) {
 }
 
 export function Dashboard({ startFromReport, initialBuildingId }: { startFromReport: boolean; initialBuildingId: string }) {
-  const [overview, setOverview] = useState<"tasks" | "portfolio">("tasks")
+  const [overview, setOverview] = useState<keyof typeof overviewTitles>("tasks")
   const [query, setQuery] = useState("")
   const [target, setTarget] = useState("")
   const [selectedId, setSelectedId] = useState(initialBuildingId)
   const selectedBuilding = buildings.find((building) => building.id === selectedId)
   const [elapsed, setElapsed] = useState(startFromReport ? 0 : -1)
+  const [reviewingElectric, setReviewingElectric] = useState(false)
   const [connectorTime, setConnectorTime] = useState(-1)
   const [connectorText, setConnectorText] = useState("")
   const session = useSyncExternalStore(subscribeDemoSession, readDemoSession, emptyDemoSession)
   const examples = useSyncExternalStore(subscribeDemoSession, readExampleJobs, emptyDemoSession)
+  const electrician = useSyncExternalStore(subscribeDemoSession, readElectrician, emptyDemoSession)
+  const electricSent = electricianDispatched(electrician)
+  const electricPending = electrician === "active"
   const approved = session !== ""
   const jobSent = elapsed >= demoJob.at_s || (approved && session !== "approved")
   const currentTime = session === "confirmed" ? Math.max(elapsed, demoSlot.at_s)
@@ -104,10 +164,26 @@ export function Dashboard({ startFromReport, initialBuildingId }: { startFromRep
   const events = [...leakReplay, ...readConnectorDemo(connectorTime)]
     .sort((a, b) => a.at_s - b.at_s)
   const connectorPlaying = connectorTime >= demoMoveIn.at_s && connectorTime < demoConnectorEnd
-  const status = leakEvents.findLast((event) => event.kind === "status_change")?.payload.status ?? "open"
-  const riserActive = status !== "resolved" && leakEvents.some((event) => event.kind === "affected")
-  const proposal = leakEvents.find((event) => event.kind === "partner_job_proposed")
-  const waiting = status === "pending_approval" && !approved
+  const plumberStatus = leakEvents.findLast((event) => event.kind === "status_change")?.payload.status ?? "open"
+  const electricalDamage = leakEvents.some(event => event.kind === "photo" && event.payload.assessment?.electrics)
+  const electricNeeded = electricalDamage && electrician !== "reported"
+  const status = plumberStatus === "resolved" && electricNeeded
+    ? electrician === "confirmed" ? "scheduled" : electricSent ? "dispatched" : "pending_approval"
+    : plumberStatus
+  const noticeRecipients = new Set(leakEvents.filter(event => event.kind === "message" && event.at_s < demoJob.at_s).map(event => event.payload.to))
+  const flatsContacted = [...noticeRecipients].filter(id => id && recipients[id]?.startsWith("Apartment")).length
+  const downstairsConfirmed = leakEvents.some(event => event.kind === "affected" && event.payload.unit_id === "2.1" && event.payload.risk === "confirmed")
+  const riserActive = session !== "reported" && leakEvents.some((event) => event.kind === "affected")
+  const proposal = leakEvents.findLast((event) => event.kind === "partner_job_proposed" && event.payload.partner_id === demoJob.payload.partner_id)
+  const sentJob = leakEvents.findLast((event) => event.kind === "partner_job")
+  const jobContext = (sentJob ?? proposal)?.payload
+  const cost = leakEvents.findLast((event) => event.kind === "cost")?.payload
+  const waiting = plumberStatus === "pending_approval" && !approved
+  const reviewElectric = electricNeeded && !electricSent
+  const pendingCount = Number(waiting) + Number(reviewElectric)
+  const approvalTarget = "approval-panel"
+  const electricFirst = reviewElectric && (reviewingElectric || (!waiting && (approved || electricPending)))
+  const nextDecision = electricFirst ? "Review electrician job" : waiting ? "Approve plumber job" : reviewElectric ? "Review electrician job" : statusLabels[status]
   const waitingForPartner =
     (session === "sent" && currentTime >= demoSlot.at_s - 1) ||
     (session === "confirmed" && currentTime >= demoResult.at_s - 1)
@@ -121,9 +197,16 @@ export function Dashboard({ startFromReport, initialBuildingId }: { startFromRep
   const outbox = events.filter((event) => event.kind === "message" || event.kind === "order")
 
   useEffect(() => {
+    const savedTime = readReplayTime()
+    if (savedTime >= 0) setElapsed(previous => Math.max(previous, savedTime))
+    else if (startFromReport) saveReplayTime(0)
+  }, [startFromReport])
+
+  useEffect(() => {
     if (!playing) return
     const timer = window.setTimeout(() => {
       const next = advanceDemo(currentTime, approved)
+      saveReplayTime(next)
       setElapsed(next)
       if (session === "approved" && next >= demoJob.at_s) writeDemoSession("sent")
     }, 1000)
@@ -131,10 +214,11 @@ export function Dashboard({ startFromReport, initialBuildingId }: { startFromRep
   }, [playing, currentTime, approved, session])
 
   useEffect(() => {
+    if (!session && (electricPending || electricSent)) setElapsed(previous => Math.max(previous, 17))
     if (session) {
       setElapsed((previous) => Math.max(previous, session === "approved" ? demoJob.at_s - 1 : demoJob.at_s))
     }
-  }, [session])
+  }, [session, electricPending, electricSent])
 
   useEffect(() => {
     if (!connectorPlaying) return
@@ -145,22 +229,30 @@ export function Dashboard({ startFromReport, initialBuildingId }: { startFromRep
   useEffect(() => {
     if (!target) return
     const section = document.getElementById(target)
-    if (section instanceof HTMLDetailsElement) {
-      section.open = true
-      section.querySelector("summary")?.focus({ preventScroll: true })
-    } else {
-      section?.focus({ preventScroll: true })
-    }
+    section?.focus({ preventScroll: true })
     section?.scrollIntoView({ block: "start" })
     setTarget("")
   }, [target])
+
+  function openOverview(view: keyof typeof overviewTitles) {
+    setSelectedId("")
+    setTarget("")
+    setOverview(view)
+    window.scrollTo(0, 0)
+  }
 
   function openBuilding(id: string, section = "building-address") {
     setSelectedId(id)
     setTarget(section)
   }
 
+  function reviewElectrician() {
+    prepareElectricianReview()
+    setReviewingElectric(true)
+  }
+
   function startDemo() {
+    saveReplayTime(0)
     setElapsed(0)
     openBuilding(scenarioBuilding.id)
   }
@@ -172,19 +264,26 @@ export function Dashboard({ startFromReport, initialBuildingId }: { startFromRep
     const example = exampleCases.find((job) => job.building.id === building.id)
     const exampleStatus = example && jobStatus(example, session, examples)
     const isScenario = building.id === scenarioBuilding.id && scenarioStarted
-    const needsApproval = isScenario && waiting
+    const needsApproval = isScenario && pendingCount > 0
     const label = isScenario ? statusLabels[status]
       : exampleStatus === "Scheduled" ? "Appointment confirmed"
       : exampleStatus === "Completed" ? "Repaired"
       : exampleStatus === "New" ? "Open case" : "No open cases"
     const state: MapState = isScenario
-      ? status === "resolved" ? "completed" : status === "scheduled" ? "scheduled" : "attention"
+      ? needsApproval ? "approval" : status === "resolved" ? "completed" : status === "scheduled" ? "scheduled" : "attention"
       : exampleStatus === "Completed" ? "completed"
       : exampleStatus === "Scheduled" ? "scheduled"
       : exampleStatus === "New" ? "attention" : "clear"
     return { building, status: label, state, needsApproval }
-  }), [query, session, examples, scenarioStarted, waiting, status])
+  }), [query, session, examples, scenarioStarted, pendingCount, status])
   const apartmentCount = buildings.reduce((count, building) => count + buildingUnits(building).length, 0)
+
+  function unitRisk(unit: string) {
+    const last = leakEvents.findLast(event => event.kind === "affected" && event.payload.unit_id === unit)
+    if (!last) return ""
+    if (session === "reported") return unit === "3.1" && electricNeeded ? "check" : "clear"
+    return last.payload.risk ?? ""
+  }
 
   if (process.env.NEXT_PUBLIC_MOCK !== "true") {
     return <main><h1>Dirigent</h1><p>Set NEXT_PUBLIC_MOCK=true to open the local demo.</p></main>
@@ -193,111 +292,249 @@ export function Dashboard({ startFromReport, initialBuildingId }: { startFromRep
   return (
     <main className="management-dashboard">
       <header className="topbar management-topbar">
-        <strong className="wordmark"><span className="wordmark-icon" aria-hidden="true" />Dirigent</strong>
-        <nav className="management-nav" aria-label="Dashboard">
-          <button type="button" aria-pressed={overview === "portfolio" && !selectedBuilding} onClick={() => { setSelectedId(""); setOverview("portfolio") }}>Portfolio</button>
-          <button type="button" aria-pressed={overview === "tasks" && !selectedBuilding} onClick={() => { setSelectedId(""); setOverview("tasks") }}>Tasks <span>{waiting ? 1 : 0}</span></button>
+        <div className="management-brand"><HomeLink onNavigate={() => {
+          setSelectedId("")
+          setOverview("tasks")
+          setQuery("")
+          setTarget("")
+          window.scrollTo(0, 0)
+        }} /><span>Property management</span></div>
+        <nav className="management-nav" aria-label="Property management">
+          <button type="button" aria-pressed={overview === "portfolio" && !selectedBuilding} onClick={() => openOverview("portfolio")}><NavIcon name="Portfolio" />Portfolio</button>
+          <button type="button" aria-pressed={overview === "tasks" && !selectedBuilding} onClick={() => openOverview("tasks")}><NavIcon name="Tasks" />Tasks <span>{pendingCount}</span></button>
         </nav>
         <div className="management-utilities">
-          <button type="button" onClick={() => openBuilding(scenarioBuilding.id, "activity-panel")}>Activity</button>
-          <button type="button" onClick={() => openBuilding(scenarioBuilding.id, "outbox-panel")}>Outbox</button>
-          <button type="button" onClick={() => openBuilding(scenarioBuilding.id, "connector-panel")}>Connectors</button>
-          <Link className="nav-link" href="/partner">Partner jobs</Link>
+          <button type="button" aria-pressed={overview === "activity" && !selectedBuilding} onClick={() => openOverview("activity")}><NavIcon name="Activity" />Activity</button>
+          <button type="button" aria-pressed={overview === "outbox" && !selectedBuilding} onClick={() => openOverview("outbox")}><NavIcon name="Outbox" />Outbox</button>
+          <button type="button" aria-pressed={overview === "connectors" && !selectedBuilding} onClick={() => openOverview("connectors")}><NavIcon name="Connectors" />Connectors</button>
+
         </div>
       </header>
       {!selectedBuilding ? (
         <>
           <div className="heading management-heading">
             <div>
-              <h1>{overview === "tasks" ? "Tasks" : "Property portfolio"}</h1>
-              {overview === "tasks" && <p>{waiting ? "1 task needs your decision" : "No tasks need a decision"}</p>}
+              <h1>{overviewTitles[overview]}</h1>
+              {overview === "portfolio" && <p>{buildings.length} buildings · {apartmentCount} apartments</p>}
+              {overview === "tasks" && <p>{pendingCount ? `${pendingCount} ${pendingCount === 1 ? "task needs" : "tasks need"} your decision` : "No tasks need a decision"}</p>}
             </div>
           </div>
           {overview === "tasks" && (
             <section className="task-hero" aria-labelledby="task-heading">
+              <img className="case-portrait" src="/mock/dirigent-building.svg" alt="" />
               <div>
                 {waiting && <span className="task-priority">Urgent</span>}
                 <h2 id="task-heading">{elapsed < 0 ? "Water damage demo" : "Water damage reported"}</h2>
                 <p>{scenarioBuilding.address} · Apartment {demoReport.payload.unit_id}</p>
               </div>
               <div className="task-decision">
-                <p>{waiting ? "Next decision" : "Case status"}</p>
-                <h3>{waiting ? "Approve plumber job" : elapsed < 0 ? "Ready to start" : statusLabels[status]}</h3>
-                <button type="button" onClick={elapsed < 0 ? startDemo : () => openBuilding(scenarioBuilding.id, waiting ? "approval-panel" : "building-address")}>
-                  {waiting ? "Review plumber job" : elapsed < 0 ? "Start demo" : "View case"}
+                <p>{pendingCount ? "Next decision" : "Case status"}</p>
+                <h3>{elapsed < 0 ? "Ready to start" : nextDecision}</h3>
+                <button type="button" onClick={elapsed < 0 ? startDemo : () => openBuilding(scenarioBuilding.id, pendingCount ? approvalTarget : "building-address")}>
+                  {electricFirst ? "Review electrician job" : waiting ? "Review plumber job" : reviewElectric ? "Review electrician job" : elapsed < 0 ? "Start demo" : "View case"}
                 </button>
               </div>
             </section>
           )}
-          <section className="management-portfolio" aria-labelledby="portfolio-heading">
-            <div className="portfolio-toolbar">
-              <div><h2 id="portfolio-heading">All buildings</h2><p>{buildings.length} buildings · {apartmentCount} apartments</p></div>
-              <input type="search" aria-label="Search buildings" placeholder="Search buildings" value={query} onChange={(event) => setQuery(event.target.value)} />
-            </div>
-            <div className="portfolio-layout">
-              <div className="portfolio-table-wrap" tabIndex={0} role="region" aria-labelledby="portfolio-heading">
-                <table className="portfolio-table">
-                  <thead><tr><th scope="col">Building</th><th scope="col">Apartments</th><th scope="col">Case status</th><th scope="col">Next step</th></tr></thead>
-                  <tbody>
-                    {filteredBuildings.map(({ building, status: label, state, needsApproval }) => (
-                        <tr key={building.id} data-priority={needsApproval}>
-                          <th scope="row">
-                            <button className="table-building" type="button" onClick={() => openBuilding(building.id)}>
-                              <img src={`/mock/portfolio/${building.id}.png`} width="42" height="42" alt="" />
-                              <span>{building.address}<small>{building.city}</small></span>
-                            </button>
-                          </th>
-                          <td>{buildingUnits(building).length}</td>
-                          <td><span className="case-status" data-status={needsApproval ? "pending_approval" : state === "completed" ? "resolved" : state === "clear" ? "idle" : "open"}>{label}</span></td>
-                          <td>
-                            <button className="table-next" type="button" onClick={() => openBuilding(building.id, needsApproval ? "approval-panel" : "building-address")}>
-                              {needsApproval ? "Approve plumber job" : state === "scheduled" ? "View appointment" : "View building"}
-                            </button>
-                          </td>
-                        </tr>
-                    ))}
-                    {!filteredBuildings.length && <tr><td colSpan={4}>No buildings match your search.</td></tr>}
-                  </tbody>
-                </table>
+          {overview === "portfolio" && (
+            <section className="management-portfolio" aria-label="Buildings">
+              <div className="portfolio-toolbar">
+                <input type="search" aria-label="Search buildings" placeholder="Search buildings" value={query} onChange={(event) => setQuery(event.target.value)} />
               </div>
-              <PortfolioMap locations={filteredBuildings} onSelect={openBuilding} />
-            </div>
-          </section>
+              <div className="portfolio-layout">
+                <ul className="property-register" aria-label="Building list">
+                  {filteredBuildings.map(({ building, status: label, state, needsApproval }) => (
+                    <li key={building.id}>
+                      <button className="property-row" type="button"
+                        onClick={() => openBuilding(building.id, needsApproval ? approvalTarget : "building-address")}>
+                        <img src={buildingPortrait(building)} alt="" />
+                        <span className="property-data">
+                          <strong>{building.address}</strong>
+                          <small>{building.city} · {buildingUnits(building).length} apartments</small>
+                          <span className="case-status" data-status={needsApproval ? "pending_approval" : state === "completed" ? "resolved" : state === "clear" ? "idle" : "open"}>{label}</span>
+                        </span>
+                        <span className="row-action"><span>{needsApproval ? "Review job" : state === "scheduled" ? "View appointment" : "View building"}</span> <NavIcon name="Chevron" /></span>
+                      </button>
+                    </li>
+                  ))}
+                  {!filteredBuildings.length && <li className="job-empty">No buildings match your search.</li>}
+                </ul>
+                <PortfolioMap locations={filteredBuildings} onSelect={openBuilding} />
+              </div>
+            </section>
+          )}
+          {overview === "activity" && (
+            <section className="workspace-feed" aria-label="Event history">
+              {(scenarioStarted && status !== "resolved" || connectorTime >= demoMoveIn.at_s && connectorTime < demoConnectorEnd) && (
+                <button className="activity-property" onClick={() => openBuilding(scenarioBuilding.id)}>
+                  <img src={buildingPortrait(scenarioBuilding)} alt="" width="44" height="48" />
+                  {scenarioBuilding.address}<NavIcon name="Chevron" />
+                </button>
+              )}
+              {activity.length ? (
+                <ol id="activity-timeline" className="activity-timeline" aria-label="Latest activity first">
+                  {visibleActivity.map(({ id, at, title, detail }) => (
+                    <li key={id}>
+                      <DemoEventTime seconds={at} />
+                      <div className="activity-entry">
+                        <strong>{title}</strong>
+                        {detail && <p>{detail}</p>}
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              ) : <p>Start the demo to follow the incident.</p>}
+              {olderActivityCount > 0 && (
+                <button
+                  type="button"
+                  className="activity-toggle"
+                  aria-expanded={showFullActivity}
+                  aria-controls="activity-timeline"
+                  onClick={() => setShowFullActivity((expanded) => !expanded)}
+                >
+                  {showFullActivity ? "Show latest 5" : `Show full history (${activity.length})`}
+                </button>
+              )}
+            </section>
+          )}
+          {overview === "outbox" && (
+            <section className="workspace-feed" aria-label="Outgoing messages">
+              {outbox.length ? (
+                <ul className="outbox-list">
+                  {[...outbox].reverse().map(({ id, at_s: at, kind, payload }) => {
+                    const order = kind === "order"
+                    const recipient = order
+                      ? payload.partner_id === "isp_rheinnet" ? "RheinNet Glasfaser" : payload.partner_id
+                      : recipients[payload.to ?? ""] ?? payload.to
+                    return (
+                      <li key={id}>
+                        <div className="outbox-heading">
+                          <strong>{recipient}</strong>
+                          <DemoEventTime seconds={at} />
+                        </div>
+                        {order ? (
+                          <details>
+                            <summary>Service order</summary>
+                            <dl>
+                              {Object.entries(payload.fields ?? {}).map(([field, value]) => (
+                                <div key={field}><dt>{field.replaceAll("_", " ")}</dt><dd>{String(value)}</dd></div>
+                              ))}
+                            </dl>
+                          </details>
+                        ) : <p className="outbox-body">{payload.text}</p>}
+                      </li>
+                    )
+                  })}
+                </ul>
+              ) : <p>No messages yet.</p>}
+            </section>
+          )}
+          {overview === "connectors" && (
+            <>
+            <ElectricianConnector step={electrician} canActivate={electricNeeded} onReview={() => { setReviewingElectric(true); openBuilding(scenarioBuilding.id, approvalTarget) }} />
+            <details className="building-disclosure"><summary>RheinNet move-in demo</summary>
+            <ConnectorDemo elapsed={connectorTime} text={connectorText} onTextChange={setConnectorText}
+              onDraft={() => setConnectorTime(demoConnectorDraft.at_s)}
+              onActivate={() => setConnectorTime(demoConnectorActivation.at_s)}
+              onMoveIn={() => setConnectorTime(demoMoveIn.at_s)}
+              onOutbox={() => openOverview("outbox")} />
+            </details>
+            </>
+          )}
         </>
       ) : (
         <>
-          <button className="portfolio-back" type="button" onClick={() => setSelectedId("")}>All buildings</button>
+          <button className="portfolio-back" type="button" onClick={() => openOverview("portfolio")}>All buildings</button>
           <div className="heading building-heading">
             <div>
               <h1 id="building-address" tabIndex={-1}>{selectedBuilding.address}</h1>
               <p>{selectedBuilding.city} · {buildingUnits(selectedBuilding).length} apartments</p>
             </div>
-            {selectedBuilding.id === scenarioBuilding.id && (elapsed >= 0 || connectorTime >= 0) && (
-              <button className="building-reset" type="button" onClick={() => {
-                setElapsed(-1)
-                setConnectorTime(-1)
-                setConnectorText("")
-                writeDemoSession("")
-                setShowFullActivity(false)
-              }}>Reset demo</button>
-            )}
           </div>
           {selectedBuilding.id === scenarioBuilding.id ? (
-            <div className="dashboard-grid building-detail-grid" key={selectedBuilding.id}>
-              <section className="building-card" aria-labelledby="building-title">
-                <div className="card-heading">
-                  <div><h2 id="building-title">Building section</h2><p>{buildingUnits(selectedBuilding).length} apartments · 2 water risers</p></div>
-                </div>
+            <div className="dashboard-grid incident-workspace" key={selectedBuilding.id}>
+              <div className="details">
+                <section className="case-summary incident-decision" data-status={pendingCount ? "pending_approval" : status}
+                  id="approval-panel" tabIndex={-1} aria-labelledby="case-summary-heading">
+                  <h2 id="case-summary-heading">{scenarioStarted ? "Water damage in apartment 3.1" : "No active case"}</h2>
+                  {!scenarioStarted ? <button className="case-action" onClick={startDemo}>Start demo</button> : <>
+                    {waiting || electricFirst ? (
+                      <>
+                        <h3>{electricFirst ? "Check the ceiling lamp and wiring" : "Find and repair the leak"}</h3>
+                        <p><strong>{electricFirst ? "Elektro Schmitz" : "Sanitär Krause"}</strong> · Cost estimate pending</p>
+                        <p>{electricFirst ? "Water was found next to the living-room lamp in apartment 3.1."
+                          : "Inspect riser A, both affected ceilings, apartment 1.1 and the cellar."}</p>
+                        {electricFirst ? (
+                          electricPending
+                            ? <button className="case-action" onClick={() => advanceElectrician("sent")}>Approve electrician job</button>
+                            : <button className="case-action" onClick={reviewElectrician}>Review electrician job</button>
+                        ) : <button className="case-action" onClick={() => writeDemoSession("approved")}>Approve and send</button>}
+                        {electricFirst
+                          ? <JobContext shared={electric.proposal.shared} withheld={electric.proposal.withheld} sent={false} partner="Elektro Schmitz" />
+                          : jobContext && <JobContext shared={jobContext.shared ?? {}} withheld={jobContext.withheld ?? []} sent={false} />}
+                        {waiting && reviewElectric && <p className="incident-followup">{electricFirst ? "Also needs your decision: plumber repair." : "Also needs your decision: electrical inspection."}</p>}
+                      </>
+                    ) : !approved && reviewElectric ? (
+                      <>
+                        <h3>Electrical inspection needed</h3><p>Water was found near the ceiling lamp. Dirigent is also preparing the plumber’s job.</p>
+                        <button className="case-action" onClick={reviewElectrician}>Review electrician job</button>
+                      </>
+                    ) : !approved ? (
+                      <><h3>Checking the damage</h3><p>Dirigent is contacting residents and preparing the plumber’s job for your review.</p></>
+                    ) : <>
+                      <h3>{session === "approved" ? "Sending the plumber’s job" : session === "sent" ? "Waiting for Sanitär Krause"
+                        : session === "confirmed" ? "Plumber visit confirmed" : electricNeeded ? "Leak fixed. Electrical check pending." : "Repairs complete"}</h3>
+                      <p>{session === "approved" ? "Your approval is recorded." : session === "sent" ? "Sanitär Krause will confirm an appointment."
+                        : session === "confirmed" ? `Sanitär Krause will visit at ${demoSlot.payload.slot}.` : demoResult.payload.work_description}</p>
+                    </>}
+                    {electricFirst && approved && <p className="incident-followup">{session === "reported" ? "Sanitär Krause has repaired the leak." : session === "confirmed" ? `Plumber visit confirmed for ${demoSlot.payload.slot}.` : "The plumber’s job is approved."}</p>}
+                    {electricSent && <p className="incident-followup">{electrician === "reported" ? "Elektro Schmitz has completed the electrical inspection."
+                      : electrician === "confirmed" ? `Elektro Schmitz will visit at ${electric.slot}.` : "Waiting for Elektro Schmitz to confirm an appointment."}</p>}
+                  </>}
+                </section>
+                {scenarioStarted && (noticeRecipients.size > 0 || jobSent) && (
+                  <section className="incident-updates">
+                    <h2>Case update</h2>
+                    {downstairsConfirmed && <p>Apartment 2.1 confirmed a wet ceiling.</p>}
+                    {flatsContacted > 0 && <p>Messages queued for {flatsContacted} {flatsContacted === 1 ? "apartment" : "apartments"}.</p>}
+                    {noticeRecipients.has("caretaker") && <p>The caretaker was asked to shut off riser A.</p>}
+                    {jobSent && jobContext && <JobContext shared={jobContext.shared ?? {}} withheld={jobContext.withheld ?? []} sent />}
+                    {electricSent && <JobContext shared={electric.proposal.shared} withheld={electric.proposal.withheld} sent partner="Elektro Schmitz" />}
+                  </section>
+                )}
+                {cost?.total_eur != null && (
+                  <details className="building-disclosure case-costs">
+                    <summary>Coordination costs<span>{euro.format(cost.total_eur)}</span></summary>
+                    <div className="building-disclosure-content">
+                      <dl>
+                        {costItems.map(([key, label]) => {
+                          const amount = cost.breakdown?.[key]
+                          return amount == null ? null : (
+                            <div key={key}><dt>{label}</dt><dd>{euro.format(amount)}</dd></div>
+                          )
+                        })}
+                        <div className="case-costs-estimate">
+                          <dt>Manual coordination estimate</dt>
+                          <dd>{euro.format(manualCoordinationEstimate)}</dd>
+                        </div>
+                      </dl>
+                      <p>Demo figures. The manual estimate assumes 45 minutes at €60/hour. Repair charges are separate.</p>
+                    </div>
+                  </details>
+                )}
+              </div>
+              <BuildingSection building={selectedBuilding}>
                 <div className="building-map" data-riser-active={riserActive}>
                   <svg className="building" viewBox="64 26 560 552" role="img" aria-label={riserActive ? "Four floors and two water risers. Water leak on riser A." : "Four floors and two water risers."}>
                     <image href="/mock/dirigent-building.svg" width="688" height="608" />
-                    {leakEvents.filter((event) => event.kind === "affected").map((event) => {
-                      const unit = event.payload.unit_id ?? ""
-                      const room = rooms[unit]
-                      if (!room) return null
-                      const color = status === "resolved" ? "#34C759"
-                        : unit === "3.1" ? "#FF3B30" : event.payload.risk === "high" ? "#FF9500" : "#FFCC00"
-                      return <rect key={event.id} {...room} height={unit === "cellar" ? 81 : 73} rx="2" fill={color} fillOpacity=".26" stroke={color} strokeWidth="2.5" />
+                    {Object.entries(rooms).map(([unit, room]) => {
+                      const risk = unitRisk(unit)
+                      const style = riskStyles[risk]
+                      if (!style) return null
+                      return <rect key={unit} data-unit={unit} data-risk={risk} {...room} height={unit === "cellar" ? 81 : 73} rx="2"
+                        fill={risk === "check" ? "none" : style.color} fillOpacity=".26" stroke={style.color} strokeWidth="2.5">
+                        <title>{unit === "cellar" ? "Cellar" : `Apartment ${unit}`} · {style.label}</title>
+                      </rect>
                     })}
                     {riserActive && (
                       <g className="active-riser" aria-hidden="true">
@@ -308,138 +545,24 @@ export function Dashboard({ startFromReport, initialBuildingId }: { startFromRep
                   </svg>
                 </div>
                 {elapsed >= 0 && <ul className="building-legend" aria-label="Building status legend">
-                  <li><span className="legend-source" />Leak source</li>
-                  <li><span className="legend-high" />High risk</li>
-                  <li><span className="legend-low" />Low risk or check</li>
-                  <li><span className="legend-resolved" />Repaired</li>
+                  {Object.entries(riskStyles).map(([risk, style]) => (
+                    <li key={risk}><span style={{ background: risk === "check" ? "transparent" : style.color, border: `2px solid ${style.color}` }} />{style.label}</li>
+                  ))}
                 </ul>}
                 <details className="building-disclosure">
                   <summary>Apartments</summary>
                   <ul className="building-apartment-links">
-                    {buildingUnits(selectedBuilding).map((unit) => (
-                      <li key={unit}><Link href={`/tenant/${unit}?building=${selectedBuilding.id}`}>Apartment {unit}</Link></li>
-                    ))}
+                    {buildingUnits(selectedBuilding).map(unit => {
+                      const label = riskStyles[unitRisk(unit)]?.label
+                      return <li key={unit}>Apartment {unit}{label && <small>{label}</small>}</li>
+                    })}
                   </ul>
                 </details>
-              </section>
-              <div className="details">
-                <section className="case-summary" data-status={elapsed < 0 ? "idle" : status}
-                  id="approval-panel" tabIndex={-1} aria-labelledby="case-summary-heading">
-                  <h2 id="case-summary-heading">{elapsed < 0 ? "No active case" : "Water damage · Apartment 3.1"}</h2>
-                  {elapsed < 0 ? (
-                    <button className="case-action" type="button" onClick={startDemo}>Start demo</button>
-                  ) : (
-                    <>
-                      <p role="status" className="case-status" data-status={status}>{statusLabels[status]}</p>
-                      {proposal && status === "pending_approval" && (
-                        <>
-                          <p className="approval-partner"><strong>Sanitär Krause</strong></p>
-                          <p className="approval-scope">{proposal.payload.briefing}</p>
-                          <details className="approval-fields">
-                            <summary>Information to share</summary>
-                            <dl>
-                              {Object.entries(proposal.payload.shared ?? {}).map(([field, value]) => (
-                                <div key={field}><dt>{field.replaceAll("_", " ")}</dt><dd>{Array.isArray(value) ? value.join(", ") : String(value)}</dd></div>
-                              ))}
-                            </dl>
-                          </details>
-                          <button className="case-action" type="button" disabled={approved} onClick={() => writeDemoSession("approved")}>
-                            {approved ? "Sending job…" : "Approve and send"}
-                          </button>
-                        </>
-                      )}
-                      {!proposal && <p>Dirigent is assessing the damage and preparing the job.</p>}
-                      {jobSent && status !== "pending_approval" && (
-                        <>
-                          <p>{session === "reported" ? demoResult.payload.work_description
-                            : session === "confirmed" ? `Appointment at ${demoSlot.payload.slot} with Sanitär Krause.`
-                            : "Waiting for Sanitär Krause to confirm an appointment."}</p>
-                        </>
-                      )}
-                      <div className="repair-links">
-                        <Link className="action-link" href={`/track/${demoReport.case_id}`}>Resident tracking</Link>
-                        {jobSent && status !== "pending_approval" && <Link className="action-link" href="/partner">Open partner view</Link>}
-                      </div>
-                    </>
-                  )}
-                </section>
-                <details className="building-disclosure" id="activity-panel">
-                  <summary>Activity{activity.length > 0 && <span>{activity.length}</span>}</summary>
-                  <div className="building-disclosure-content">
-                    {activity.length ? (
-                      <ol id="activity-timeline" className="activity-timeline" aria-label="Latest activity first">
-                        {visibleActivity.map(({ id, at, title, detail }) => (
-                          <li key={id}>
-                            <time dateTime={`PT${at}S`} aria-label={`${at} seconds into the demo`}>{demoTime(at)}</time>
-                            <div className="activity-entry">
-                              <strong>{title}</strong>
-                              {detail && <p>{detail}</p>}
-                            </div>
-                          </li>
-                        ))}
-                      </ol>
-                    ) : <p>Start the demo to follow the incident.</p>}
-                    {olderActivityCount > 0 && (
-                      <button
-                        type="button"
-                        className="activity-toggle"
-                        aria-expanded={showFullActivity}
-                        aria-controls="activity-timeline"
-                        onClick={() => setShowFullActivity((expanded) => !expanded)}
-                      >
-                        {showFullActivity ? "Show latest 5" : `Show full history (${activity.length})`}
-                      </button>
-                    )}
-                  </div>
-                </details>
-                <details className="building-disclosure" id="outbox-panel">
-                  <summary>Outbox{outbox.length > 0 && <span>{outbox.length}</span>}</summary>
-                  <div className="building-disclosure-content">
-                    {outbox.length ? (
-                      <ul className="outbox-list">
-                        {[...outbox].reverse().map(({ id, at_s: at, kind, payload }) => {
-                          const order = kind === "order"
-                          const recipient = order
-                            ? payload.partner_id === "isp_rheinnet" ? "RheinNet Glasfaser" : payload.partner_id
-                            : recipients[payload.to ?? ""] ?? payload.to
-                          return (
-                            <li key={id}>
-                              <details>
-                                <summary>
-                                  <span className="outbox-heading">
-                                    <strong>{recipient}</strong>
-                                    <time dateTime={`PT${at}S`} aria-label={`${at} seconds into the demo`}>{demoTime(at)}</time>
-                                  </span>
-                                  <span className="outbox-preview">{order ? "Service order" : payload.text}</span>
-                                </summary>
-                                {order ? (
-                                  <dl>
-                                    {Object.entries(payload.fields ?? {}).map(([field, value]) => (
-                                      <div key={field}><dt>{field.replaceAll("_", " ")}</dt><dd>{String(value)}</dd></div>
-                                    ))}
-                                  </dl>
-                                ) : <p className="outbox-body">{payload.text}</p>}
-                              </details>
-                            </li>
-                          )
-                        })}
-                      </ul>
-                    ) : <p>No messages yet.</p>}
-                  </div>
-                </details>
-                <ConnectorDemo elapsed={connectorTime} text={connectorText} onTextChange={setConnectorText}
-                  onDraft={() => setConnectorTime(demoConnectorDraft.at_s)}
-                  onActivate={() => setConnectorTime(demoConnectorActivation.at_s)}
-                  onMoveIn={() => setConnectorTime(demoMoveIn.at_s)}
-                  onOutbox={() => openBuilding(scenarioBuilding.id, "outbox-panel")} />
-              </div>
+              </BuildingSection>
             </div>
           ) : (
             <div className="dashboard-grid building-detail-grid" key={selectedBuilding.id}>
-              <section className="building-card" aria-labelledby="building-title">
-                <div className="card-heading">
-                  <div><h2 id="building-title">Building section</h2><p>{selectedBuilding.floors} floors · {buildingUnits(selectedBuilding).length} apartments</p></div>
-                </div>
+              <BuildingSection building={selectedBuilding}>
                 <div className="building-map">
                   <svg className="building" viewBox={`64 26 560 ${552 + (selectedBuilding.floors - 4) * 82}`}
                     role="img" aria-label={`${selectedBuilding.floors}-storey building section with two apartments on each floor`}>
@@ -458,17 +581,17 @@ export function Dashboard({ startFromReport, initialBuildingId }: { startFromRep
                   <summary>Apartments</summary>
                   <ul className="building-apartment-links">
                     {buildingUnits(selectedBuilding).map((unit) => (
-                      <li key={unit}><Link href={`/tenant/${unit}?building=${selectedBuilding.id}`}>Apartment {unit}</Link></li>
+                      <li key={unit}>Apartment {unit} <small>{exampleCases.find(job => job.building.id === selectedBuilding.id && job.apartment === unit)?.title}</small></li>
                     ))}
                   </ul>
                 </details>
-              </section>
+              </BuildingSection>
               <div className="details">
                 {exampleCases.filter((job) => job.building.id === selectedBuilding.id).map((job) => (
                   <section className="building-case" key={job.id}>
                     <h2>{job.title}</h2>
                     <p>Apartment {job.apartment} · {jobStatus(job, session, examples)}</p>
-                    <Link className="action-link" href={`/partner/${job.id}`}>View job</Link>
+                    <p>{job.scope}</p>
                   </section>
                 ))}
               </div>
@@ -476,6 +599,23 @@ export function Dashboard({ startFromReport, initialBuildingId }: { startFromRep
           )}
         </>
       )}
+      <details className="demo-views">
+        <summary>Demo views</summary>
+        <div><Link href="/tenant/3.1">Resident report</Link><Link href="/partner">Plumber jobs</Link>
+          {scenarioStarted && <Link href="/track/c1">Resident tracking</Link>}
+          {electricSent && <Link href="/partner/c1?partner=electrician_schmitz">Electrician job</Link>}
+          {(elapsed >= 0 || connectorTime >= 0) && (
+              <button className="building-reset" type="button" onClick={() => {
+                setReviewingElectric(false)
+                setElapsed(-1)
+                setConnectorTime(-1)
+                setConnectorText("")
+                writeDemoSession("")
+                setShowFullActivity(false)
+              }}>Reset demo</button>
+            )}
+        </div>
+      </details>
     </main>
   )
 }
