@@ -58,7 +58,7 @@ function initialState(): DemoState {
   };
 }
 
-function currentState(): DemoState {
+function currentState(): StoredState {
   if (!cache.dirigentState) {
     try {
       cache.dirigentState = JSON.parse(readFileSync(statePath, "utf8")) as StoredState;
