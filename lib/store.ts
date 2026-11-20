@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 import building from "../data/building.json";
 import plumber from "../connectors/plumber_krause.json";
-import { findRiser } from "./building";
+import { findAffectedUnits, findRiser } from "./building";
 import { now, resetClock } from "./clock";
 import { buildCostPayload } from "./cost";
 
@@ -273,6 +273,13 @@ export function updatePartnerJob(caseId: string, partnerId: string, update: Part
   }
 
   const unitIds = new Set([demoCase.unit_id]);
+  const plumberAppointment = scheduled && job.payload.role === "plumber";
+  if (plumberAppointment) {
+    const { affected } = findAffectedUnits(demoCase.unit_id, demoCase.type);
+    for (const unit of affected) {
+      if (unit.risk === "high") unitIds.add(unit.unit_id);
+    }
+  }
   if (!scheduled) {
     for (const event of events) {
       if (event.kind === "affected" && typeof event.payload.unit_id === "string") {
@@ -281,6 +288,7 @@ export function updatePartnerJob(caseId: string, partnerId: string, update: Part
     }
   }
   const recipients = new Set(building.units.filter((unit) => unitIds.has(unit.id)).map((unit) => unit.tenant_id));
+  if (plumberAppointment) recipients.add(building.parties.caretaker.id);
   const partnerLabel = String(job.payload.role);
   for (const to of recipients) {
     updates.push({
