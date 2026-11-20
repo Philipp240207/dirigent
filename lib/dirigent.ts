@@ -1,13 +1,15 @@
 import building from "../data/building.json";
 import { findAffectedUnits } from "./building";
+import { isCallDryRun, simulatedCallEvents, type ResidentCall } from "./calls";
 import { buildPlumberProposal } from "./contextPass";
 import type { DemoCase, NewEvent } from "./store";
 
-export function buildLeakTimeline(demoCase: DemoCase, description: string): NewEvent[] {
+export function buildLeakTimeline(demoCase: DemoCase, description: string) {
   const { id, unit_id, type } = demoCase;
   const ceilingLeak = /\b(?:ceiling|zimmerdecke|decke|plafond)\b/i.test(description);
   const { affected, likelySource } = findAffectedUnits(unit_id, type, { ceilingLeak });
   const events: NewEvent[] = [];
+  const liveCalls: ResidentCall[] = [];
   const record = (kind: string, payload: NewEvent["payload"]) => {
     events.push({ case_id: id, kind, actor: "dirigent", payload });
   };
@@ -29,21 +31,20 @@ export function buildLeakTimeline(demoCase: DemoCase, description: string): NewE
     }
 
     const purpose = `High water risk: ${unit.unit_id} is directly below ${unit_id} on the same riser.`;
-    if (process.env.CALLS_DRY_RUN === "true") {
+    const call: ResidentCall = {
+      caseId: id,
+      tenantId: resident.id,
+      name: resident.name,
+      language: resident.language,
+      phoneEnv: resident.phone_env,
+      purpose,
+    };
+    if (isCallDryRun()) {
       record("reasoning", { text: `Calling ${unit.unit_id} in dry-run mode. ${purpose}` });
-      record("call_started", {
-        to_tenant_id: resident.id,
-        language: resident.language,
-        purpose,
-        dry_run: true,
-      });
-      record("call_ended", {
-        to_tenant_id: resident.id,
-        duration_s: 0,
-        summary: "Simulated warning about water from the apartment above.",
-      });
+      events.push(...simulatedCallEvents(call));
     } else {
-      record("reasoning", { text: `${purpose} Live calling is not configured in this workflow.` });
+      record("reasoning", { text: `Queuing a resident call to ${unit.unit_id}. ${purpose}` });
+      liveCalls.push(call);
     }
   }
 
@@ -65,5 +66,5 @@ export function buildLeakTimeline(demoCase: DemoCase, description: string): NewE
   ));
   record("status_change", { status: "pending_approval" });
 
-  return events;
+  return { events, liveCalls };
 }

@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
+import { after } from "next/server";
 import building from "@/data/building.json";
+import { startResidentCall } from "@/lib/calls";
 import { buildLeakTimeline } from "@/lib/dirigent";
 import { saveNewCase, type DemoCase } from "@/lib/store";
 
@@ -25,7 +27,7 @@ export async function POST(request: Request) {
     created_at: new Date().toISOString(),
   };
 
-  const timeline = buildLeakTimeline(demoCase, input.description);
+  const { events, liveCalls } = buildLeakTimeline(demoCase, input.description);
   saveNewCase({ ...demoCase, status: "pending_approval" }, [
     {
       case_id: demoCase.id,
@@ -38,8 +40,14 @@ export async function POST(request: Request) {
         description: input.description.trim(),
       },
     },
-    ...timeline,
+    ...events,
   ]);
+
+  if (liveCalls.length) {
+    after(async () => {
+      await Promise.all(liveCalls.map(startResidentCall));
+    });
+  }
 
   return Response.json({ case_id: demoCase.id });
 }
