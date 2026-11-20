@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 688 608" role="img" aria-labelledby="building-title building-description">
+  <title id="building-title">Dirigent – Hausquerschnitt</title>
+  <desc id="building-description">Vier Etagen mit je zwei Wohnungen über einem gemeinsamen Keller. Steigleitung A verbindet die Wohnungen 4.1 bis 1.1 links. Steigleitung B verbindet die Wohnungen 4.2 bis 1.2 rechts. Beide Leitungen enden im Keller.</desc>
+
+  <defs>
+    <linearGradient id="roof-fill" x2="0" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#3b5363"/>
+      <stop offset="1" stop-color="#283d4c"/>
+    </linearGradient>
+    <linearGradient id="cellar-fill" x2="0" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#e5e8e7"/>
+      <stop offset="1" stop-color="#d6dddf"/>
+    </linearGradient>
+    <pattern id="cellar-brick" width="36" height="18" patternUnits="userSpaceOnUse">
+      <path d="M0 0h36M0 9h36M9 0v9m18 0v9" fill="none" stroke="#aebdc1" stroke-opacity=".35"/>
+    </pattern>
+
+    <g id="sofa" stroke="#8b9e9e" stroke-width="1.5">
+      <rect x="3" y="5" width="69" height="24" rx="5" fill="#dfe7e0"/>
+      <rect y="20" width="75" height="19" rx="4" fill="#cfdbd1"/>
+      <path d="M12 20v11h51V20M37.5 21v10M7 39v4m61-4v4" fill="none" stroke-linecap="round"/>
+    </g>
+    <g id="desk" stroke="#8b9e9e" stroke-width="1.5">
+      <path d="M5 44V27m59 17V27M19 21h24m-12-7v7" fill="none" stroke-linecap="round"/>
+      <rect x="16" y="2" width="30" height="13" rx="2" fill="#d5e0e1"/>
+      <rect y="22" width="69" height="6" rx="2" fill="#dcd5c7"/>
+    </g>
+    <g id="bed" stroke="#8b9e9e" stroke-width="1.5">
+      <path d="M5 40v4m65-4v4" fill="none" stroke-linecap="round"/>
+      <rect x="2" y="3" width="72" height="37" rx="5" fill="#dee5e7"/>
+      <rect x="8" y="9" width="19" height="13" rx="4" fill="#f5f7f5"/>
+      <path d="M32 8h33a4 4 0 0 1 4 4v22H32z" fill="#cbd9dd"/>
+    </g>
+    <g id="sideboard" stroke="#8b9e9e" stroke-width="1.5">
+      <rect y="18" width="68" height="21" rx="2" fill="#e4dac9"/>
+      <path d="M22 18v21m24-21v21M6 39v4m56-4v4M5 28h6m17 0h6m17 0h6" fill="none" stroke-linecap="round"/>
+      <path d="M52 17l-2-9h11l-2 9m-4-10V1m0 6-4-5m4 5 4-5" fill="none" stroke-linecap="round"/>
+    </g>
+    <g id="stairs" fill="none" stroke="#8b9fa5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 59h9v-8h9v-8h9v-8h9v-8h9v-8h9" stroke-width="2.5"/>
+      <path d="M14 43l43-38M17 41v10m18-26v18M53 9v18" stroke-width="1.4"/>
+    </g>
+  </defs>
+
+  <style>
+    .unit-surface { fill: #f3f4ef; }
+    .unit-label, .cellar-label, .riser-label {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-weight: 650;
+    }
+    .unit-label { fill: #243f4b; font-size: 18px; }
+    .cellar-label { fill: #364f5a; font-size: 17px; }
+    .riser-label { fill: #fff; font-size: 13px; text-anchor: middle; }
+  </style>
+
+  <ellipse cx="344" cy="558" rx="289" ry="18" fill="#24414f" opacity=".08"/>
+  <path d="M518 110V40h21v70zM514 40h29v-6h-29z" fill="#526977" stroke="#273e4c" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M64 128 315 39a85 85 0 0 1 58 0l251 89z" fill="url(#roof-fill)" stroke="#273e4c" stroke-width="3" stroke-linejoin="round"/>
+  <path d="m87 125 233-81a72 72 0 0 1 48 0l233 81M126 112h436m-390-16h344M219 80h250m-204-16h158" fill="none" stroke="#a4b5bf" stroke-opacity=".28"/>
+  <path d="M318 128V96a26 26 0 0 1 52 0v32z" fill="#233644" stroke="#aabbbf" stroke-width="2"/>
+  <path d="M324 128V96a20 20 0 0 1 40 0v32z" fill="#d4e2e1"/>
+  <path d="M344 76v52m-20-26h40" stroke="#52707c" stroke-width="2"/>
+
+  <rect x="81" y="130" width="526" height="425" rx="4" fill="#304954"/>
+  <path d="M310 137h68v328h-68z" fill="#dbe3e3"/>
+
+  <g id="unit-4-1">
+    <rect class="unit-surface" x="87" y="137" width="219" height="76"/>
+    <text class="unit-label" x="132" y="165">4.1</text>
+    <use href="#desk" x="213" y="158"/>
+  </g>
+  <g id="unit-4-2">
+    <rect class="unit-surface" x="382" y="137" width="219" height="76"/>
+    <text class="unit-label" x="404" y="165">4.2</text>
+    <use href="#bed" x="477" y="158"/>
+  </g>
+  <use href="#stairs" x="310" y="145"/>
+
+  <g id="unit-3-1">
+    <rect class="unit-surface" x="87" y="219" width="219" height="76"/>
+    <text class="unit-label" x="132" y="247">3.1</text>
+    <use href="#sofa" x="208" y="240"/>
+  </g>
+  <g id="unit-3-2">
+    <rect class="unit-surface" x="382" y="219" width="219" height="76"/>
+    <text class="unit-label" x="404" y="247">3.2</text>
+    <use href="#sideboard" x="483" y="240"/>
+  </g>
+  <use href="#stairs" x="310" y="227"/>
+
+  <g id="unit-2-1">
+    <rect class="unit-surface" x="87" y="301" width="219" height="76"/>
+    <text class="unit-label" x="132" y="329">2.1</text>
+    <use href="#sideboard" x="215" y="322"/>
+  </g>
+  <g id="unit-2-2">
+    <rect class="unit-surface" x="382" y="301" width="219" height="76"/>
+    <text class="unit-label" x="404" y="329">2.2</text>
+    <use href="#desk" x="482" y="322"/>
+  </g>
+  <use href="#stairs" x="310" y="309"/>
+
+  <g id="unit-1-1">
+    <rect class="unit-surface" x="87" y="383" width="219" height="76"/>
+    <text class="unit-label" x="132" y="411">1.1</text>
+    <use href="#bed" x="207" y="404"/>
+  </g>
+  <g id="unit-1-2">
+    <rect class="unit-surface" x="382" y="383" width="219" height="76"/>
+    <text class="unit-label" x="404" y="411">1.2</text>
+    <use href="#sofa" x="476" y="404"/>
+  </g>
+  <use href="#stairs" x="310" y="391"/>
+
+  <g id="cellar">
+    <rect x="87" y="465" width="514" height="84" fill="url(#cellar-fill)"/>
+    <rect x="87" y="465" width="514" height="84" fill="url(#cellar-brick)"/>
+    <text class="cellar-label" x="344" y="514" text-anchor="middle">Keller</text>
+  </g>
+
+  <g id="riser_A" stroke="#247c76">
+    <path d="M111 150v358m0-327h13m-13 82h13m-13 82h13m-13 82h13" fill="none" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="111" cy="520" r="13" fill="#247c76" stroke="none"/>
+    <text class="riser-label" x="111" y="525" stroke="none">A</text>
+  </g>
+  <g id="riser_B" stroke="#506d90">
+    <path d="M577 150v358m0-327h-13m13 82h-13m13 82h-13m13 82h-13" fill="none" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="577" cy="520" r="13" fill="#506d90" stroke="none"/>
+    <text class="riser-label" x="577" y="525" stroke="none">B</text>
+  </g>
+
+  <path d="M69 130h550" stroke="#304954" stroke-width="6" stroke-linecap="round"/>
+</svg>
