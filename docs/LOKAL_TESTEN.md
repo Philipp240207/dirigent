@@ -102,6 +102,13 @@ curl -X POST http://localhost:3000/api/cases/CASE_ID/photo -F "file=@/Users/NAME
 ```
 Erwartet: `assessment` mit `severity`. Wenn das Foto eine Lampe neben dem Wasser zeigt: `electrics: true` und ein `reasoning` "No electrician connected yet".
 
+**3b. Hausmeister hat das Ventil geschlossen** (Wasser aus)
+```
+curl -X POST http://localhost:3000/api/cases/CASE_ID/water-status \
+  -H "Content-Type: application/json" -d '{"status":"off"}'
+```
+Erwartet: `water_status_confirmed` mit `status: "off"` und eine Nachricht an jede Wohnung am Strang A (t41, t31, t21, t11). Noch einmal `restored` an dieser Stelle schicken: `409`, weil der Installateur noch nicht fertig ist.
+
 **4. Vor der Freigabe sieht der Installateur nichts**
 ```
 curl -i "http://localhost:3000/api/partner-job?case_id=CASE_ID&partner_id=plumber_krause"
@@ -135,6 +142,13 @@ curl -X POST http://localhost:3000/api/cases/CASE_ID/result \
   -d '{"partner_id":"plumber_krause","cost_eur":340,"work_description":"Replaced a leaking pipe joint on riser A. 2.1 ceiling dried, cellar dry."}'
 ```
 Erwartet: `maintenance_log`. Wenn kein weiterer Partner offen ist: Status `resolved`, Nachricht an `owner`, `cost`.
+
+**8b. Wasser wieder an**
+```
+curl -X POST http://localhost:3000/api/cases/CASE_ID/water-status \
+  -H "Content-Type: application/json" -d '{"status":"restored"}'
+```
+Erwartet: `water_status_confirmed` mit `status: "restored"` und "The water on your riser is back on." an jede Wohnung am Strang A.
 
 **9. Elektriker live anbinden (Stufe 2)**
 ```
