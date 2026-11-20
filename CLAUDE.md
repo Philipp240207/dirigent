@@ -28,7 +28,7 @@ reltix deliverables: **A. Working demo** (event → resident → partner → res
 
 1. **Daniel Brooks (3.1, English)** tells the tenant agent that water drips from his ceiling and uploads a photo.
 2. Dirigent walks riser A: **2.1 below = high risk → real phone call** to Herr Krueger in German. **1.1 = low risk → message.** Cellar → checked during the plumber visit.
-3. Dirigent prepares the job. The property manager reviews the proposed plumber, scope, and information to be shared, then clicks **Approve and send**. The **plumber** then (Sanitaer Krause) gets a job with a **context pass**: only what his role may see (address, access, photo, assessment, availability, affected units). Rent arrears are withheld.
+3. Dirigent prepares the job. The property manager reviews the proposed plumber, scope, and information to be shared, then clicks **Approve and send**. The **plumber** (Sanitaer Krause) then gets a job with a **context pass**: only what his role may see (address, access, photo, assessment, availability, affected units). Rent arrears are withheld.
 4. The plumber confirms a slot, later reports **"done, 340 EUR"** → case resolved, **maintenance log** entry, messages to tenants and owner, tracking page updated.
 5. **Live partner plug-in:** paste the website text of **RheinNet Glasfaser** (fictional ISP) → GPT drafts its connector → activate → event "**Lucas Laurent moves into 4.2 on 1 Dec**" → pre-filled order to RheinNet + **real phone call to Lucas in French**. "Every new partner is a config, not a project."
 6. **Cost counter:** this case about 1 EUR versus about 45 EUR of manual work.
@@ -133,7 +133,7 @@ Client tools are set in the ElevenLabs dashboard as type **Client**, with exactl
 ### 5.5 Data files
 - `data/building.json`: the building (centrix data). `share_with` lists **roles**, never partner IDs.
 - `connectors/*.json`: one file per partner, format in 7.4. `connectors/schema.json` validates them.
-- `fixtures/demo-events.json`: the full demo (`cases`, `connectors`, `events`), each event with `at_s` (seconds from start) instead of `at`. Mock mode replays it. It uses only the event kinds of 5.2, so screens built on it work unchanged with the real server.
+- `fixtures/demo-events.json`: the full demo (`cases`, `connectors`, `events`), each event with `at_s` (seconds from start) instead of `at`. Mock mode replays it. The `status_change` to `pending_approval` carries `"pause_until_approved": true`: the replay stops there until **Approve and send** is clicked. It uses only the event kinds of 5.2, so screens built on it work unchanged with the real server.
 
 ---
 
@@ -154,7 +154,7 @@ All screens follow Apple's Human Interface Guidelines, using the iOS UI kit from
 - `lib/store.ts`: in-memory state + write to `data/state.json`, `addEvent()`, `reset()`.
 - `lib/building.ts`: load `data/building.json`, `findAffectedUnits(unitId, incidentType)` returns `[{unit_id, risk}]` by the riser rule (below = high, two or more below = low, cellar = check).
 - `lib/dirigent.ts`: OpenAI **Responses API** with function calling. Tools: `find_affected_units`, `call_resident(tenant_id, purpose)`, `message_resident(tenant_id, text)`, `propose_partner_job(role)`, `message_owner(text)`, `log_reasoning(text)`. Code executes, every call writes an event. The model may explain but never invent parties.
-- The proposed job moves the case to `pending_approval`. Only the property manager can view and approve the proposal. Approval records the manager, releases the reviewed job once, emits `partner_job`, and moves the case to `dispatched`. Partner lookup, booking and result routes reject requests before approval. Resident notifications can run while approval is pending. The optional owner spending approval in Stage 3 is separate.
+- The proposed job moves the case to `pending_approval`. Only the property manager can view and approve the proposal. The property manager is whoever uses `/dashboard` (no logins, see section 9): "manager only" means the partner page and the partner routes never show or return a proposal. The approving actor is written as `property_manager`. Approval records the manager, releases the reviewed job once, emits `partner_job`, and moves the case to `dispatched`. Partner lookup, booking and result routes reject requests before approval. Resident notifications can run while approval is pending. The optional owner spending approval in Stage 3 is separate.
 - `lib/contextPass.ts`: shared/withheld fields by code from `share_with` and the connector's role; the model only writes the briefing text.
 - `lib/calls.ts`: `startResidentCall()`. If `CALLS_DRY_RUN=true`: only `call_started` and a fake `call_ended` event. Else: ElevenLabs Twilio outbound call (agent `resident_call`, `ELEVENLABS_PHONE_NUMBER_ID`, number from env, dynamic variables, overrides for language and first message). Then poll the conversation in the ElevenLabs API every 5 s until it is done, write `call_ended` with duration and summary.
 - `lib/connectors.ts`: loads `connectors/*.json` + activated connectors from the state. Runner: event type → matching connectors (`detect.events`) → context pass → conversation and resident_contact.

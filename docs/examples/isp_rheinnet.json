@@ -1,0 +1,44 @@
+{
+  "partner_id": "isp_rheinnet",
+  "role": "isp",
+  "category": "internet",
+  "mode": "sell",
+  "detect": {
+    "events": [
+      "move_in"
+    ]
+  },
+  "handover": {
+    "required": [
+      "tenant_name",
+      "move_in_date",
+      "unit_id",
+      "phone",
+      "internet_line_id"
+    ],
+    "never": [
+      "rent_arrears_eur"
+    ]
+  },
+  "conversation": {
+    "channel": "message",
+    "goal": "send the pre-filled order"
+  },
+  "resident_contact": {
+    "channel": "phone",
+    "agent": "resident_call",
+    "goal": "confirm tariff and activation date"
+  },
+  "close_loop": {
+    "result_fields": [
+      "contract_signed",
+      "activation_date"
+    ],
+    "write_to_property": "unit_record",
+    "notify": [
+      "tenant",
+      "owner"
+    ]
+  },
+  "cost_rule": "voice only if urgent, language barrier or new resident without portal; otherwise message"
+}

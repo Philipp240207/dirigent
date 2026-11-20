@@ -1,0 +1,48 @@
+{
+  "partner_id": "plumber_krause",
+  "role": "plumber",
+  "category": "repairs",
+  "mode": "deliver",
+  "detect": {
+    "events": [
+      "water_leak",
+      "drain_blocked"
+    ],
+    "conditions": "severity >= 2"
+  },
+  "handover": {
+    "required": [
+      "address",
+      "unit_id",
+      "access_info",
+      "damage_photo",
+      "damage_assessment",
+      "tenant_availability",
+      "affected_units"
+    ],
+    "never": [
+      "rent_arrears_eur"
+    ]
+  },
+  "conversation": {
+    "channel": "browser",
+    "agent": "partner_call",
+    "language": "de",
+    "goal": "confirm the earliest slot that fits the affected tenants, get a cost estimate"
+  },
+  "close_loop": {
+    "result_fields": [
+      "slot",
+      "cost_eur",
+      "work_description"
+    ],
+    "write_to_property": "maintenance_log",
+    "notify": [
+      "tenant",
+      "affected_tenants",
+      "owner"
+    ],
+    "approval_over_eur": 500
+  },
+  "cost_rule": "voice only if urgent, language barrier or new resident without portal; otherwise message"
+}

@@ -21,16 +21,23 @@ type Job = {
   affectedUnits?: string[]
 }
 
-const shared = demoJob.payload.shared
+const { case_id: caseId } = demoReport
+const { shared, briefing } = demoJob.payload
+const { slot } = demoSlot.payload
+const { cost_eur: cost, work_description: description } = demoResult.payload
+
+if (!caseId || !shared?.unit_id || !briefing || !slot || cost === undefined || !description) {
+  throw new Error("The demo fixture is missing required plumber job details.")
+}
 export const mainJob: Job = {
-  id: demoReport.case_id,
+  id: caseId,
   title: "Water leak",
   apartment: shared.unit_id,
   building: scenarioBuilding,
-  scope: demoJob.payload.briefing,
+  scope: briefing,
   priority: "Urgent",
-  slot: demoSlot.payload.slot,
-  result: { cost: demoResult.payload.cost_eur, description: demoResult.payload.work_description },
+  slot,
+  result: { cost, description },
   initialStatus: "New",
   example: false,
   access: shared.access_info,
