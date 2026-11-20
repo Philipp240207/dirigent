@@ -1,3 +1,4 @@
+import { LiveDashboard } from "./live-dashboard"
 import { Dashboard } from "./dashboard"
 import { buildings, scenarioBuilding } from "../../../client/buildings"
 import { demoReport } from "../../../client/state"
@@ -8,6 +9,7 @@ export default async function DashboardPage({
   searchParams: Promise<{ report?: string | string[]; building?: string | string[] }>
 }) {
   const { report, building } = await searchParams
+  if (process.env.NEXT_PUBLIC_MOCK !== "true") return <LiveDashboard />
   const startFromReport = report === demoReport.case_id
   const initialBuildingId = startFromReport
     ? scenarioBuilding.id
