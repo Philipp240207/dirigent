@@ -30,14 +30,8 @@ function callEntry(event: IncidentEvent) {
 
 export type WaterStatus = "off" | "restored"
 
-export function LiveIncident({ unit, resolved, events, onWaterStatus, waterBusy = false, disabled = false }: {
-  unit: string
-  resolved: boolean
-  events: IncidentEvent[]
-  onWaterStatus?: (status: WaterStatus) => void
-  waterBusy?: boolean
-  disabled?: boolean
-}) {
+// Risk per unit for the building cross-section (a later event for the same unit wins).
+export function incidentRisks(unit: string, events: IncidentEvent[]) {
   const risks = new Map([[unit, "confirmed"]])
   for (const { kind, payload } of events) {
     // Earlier servers emitted the possible source in a reasoning event.
@@ -52,6 +46,20 @@ export function LiveIncident({ unit, resolved, events, onWaterStatus, waterBusy 
       if (Object.hasOwn(riskStyles, risk)) risks.set(payload.unit_id, risk)
     }
   }
+  return risks
+}
+
+export function LiveIncident({ unit, resolved, events, onWaterStatus, waterBusy = false, disabled = false, section = true }: {
+  unit: string
+  resolved: boolean
+  events: IncidentEvent[]
+  onWaterStatus?: (status: WaterStatus) => void
+  waterBusy?: boolean
+  disabled?: boolean
+  /** false: leave out the cross-section (the page shows it elsewhere). */
+  section?: boolean
+}) {
+  const risks = incidentRisks(unit, events)
   const calls = events.flatMap(event => {
     const entry = callEntry(event)
     return entry ? [{ ...entry, id: event.id, at: event.at }] : []
@@ -59,16 +67,20 @@ export function LiveIncident({ unit, resolved, events, onWaterStatus, waterBusy 
   const [latest, ...earlier] = calls
   const water = events.findLast(event => event.kind === "water_status_confirmed")?.payload.status
   const waterOff = water === "off"
-  const shutoffRequested = events.some(event => event.kind === "water_shutoff_requested")
+  const shutoffRequest = events.findLast(event => event.kind === "water_shutoff_requested")
+  const shutoffRequested = Boolean(shutoffRequest)
+  const requestedUnits = Array.isArray(shutoffRequest?.payload.units)
+    ? shutoffRequest.payload.units.filter((item): item is string => typeof item === "string") : []
+  const where = requestedUnits.length ? ` in ${requestedUnits.join(", ")}` : ""
   const plumberDone = events.some(event => event.kind === "result" && event.payload.partner_id === "plumber_krause")
   const canConfirmOff = Boolean(onWaterStatus) && shutoffRequested && !water && !resolved
   const canConfirmRestored = Boolean(onWaterStatus) && waterOff
   return <div className="live-incident">
-    <IncidentSection unitRisk={id => risks.get(id) ?? ""} reportedUnit={unit} showLegend riserActive={!resolved && !waterOff} />
+    {section && <IncidentSection unitRisk={id => risks.get(id) ?? ""} reportedUnit={unit} showLegend riserActive={!resolved && !waterOff} />}
     {(waterOff || water === "restored" || (!resolved && shutoffRequested)) && <div className="live-water-status">
       <p role="status">
-        {waterOff ? (plumberDone ? "Caretaker asked to reopen the valve" : "Water shut-off confirmed")
-          : water === "restored" ? "Water supply restored" : "Caretaker asked to shut off the water"}
+        {waterOff ? (plumberDone ? `Caretaker asked to turn the water back on${where}` : `Water shut off${where}`)
+          : water === "restored" ? `Water back on${where}` : `Caretaker asked to shut off water${where}`}
       </p>
       {canConfirmOff && <button type="button" className="secondary" disabled={waterBusy || disabled} onClick={() => onWaterStatus?.("off")}>
         {waterBusy ? "Confirming…" : "Caretaker closed the valve"}
