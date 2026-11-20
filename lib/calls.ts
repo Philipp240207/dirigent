@@ -131,7 +131,7 @@ export async function startResidentCall(call: ResidentCall, attempt = 1) {
     return;
   }
 
-  const details = "Water damage was just found in the flat above. The caretaker has been informed and is on his way to turn off the water on the riser so no more damage occurs. A plumber is being arranged.";
+  const details = "A water leak was found in the flat above. The caretaker will shut off the water there; in this flat only if there is damage too. A plumber is being arranged.";
   const headers = { "xi-api-key": apiKey, "Content-Type": "application/json" };
   try {
     const response = await fetch(`${apiBase}/twilio/outbound-call`, {

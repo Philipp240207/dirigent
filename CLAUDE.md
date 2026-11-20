@@ -31,7 +31,7 @@ reltix deliverables: **A. Working demo** (event → resident → partner → res
 ### The water leak, scene by scene
 1. **Overview:** `/dashboard` shows a stylised map of Duesseldorf with our 8 buildings and a list next to it. Everything is calm.
 2. **Report:** Daniel Brooks (3.1, English) talks to the tenant agent and uploads a photo: water drips from the living-room ceiling, next to the ceiling lamp.
-3. **Detect the moment:** Kaiserswerther Strasse 12 lights up red on the map and jumps to the top of the list. Click → the building cross-section opens. 3.1 red. Dirigent walks riser A: **4.1 above = possible source** (message: please check sinks, bath, washing machine), **2.1 below = high risk** (phone call), **1.1 and cellar = check**. **Water off:** Dirigent messages the caretaker to close the riser A main valve (location from the building graph: cellar, left wall behind door K1) and tells all four flats on riser A that the water is off until the plumber is done.
+3. **Detect the moment:** Kaiserswerther Strasse 12 lights up red on the map and jumps to the top of the list. Click → the building cross-section opens. 3.1 red. Dirigent walks riser A: **4.1 above = possible source** (message: please check sinks, bath, washing machine), **2.1 below = high risk** (phone call), **1.1 and cellar = check**. The plumber proposal lists the reported flat for water shutoff. Approval requests closure at the listed flats’ own shutoff valves.
 4. **Call to 2.1, scenario "no answer":** Herr Krueger does not pick up (Emil **declines** the call, that is faster than letting it ring). Dirigent sends him a message right away and schedules a **retry**. Timeline: "Retry at 13:42".
 5. **Retry, scenario "answered":** Herr Krueger picks up, confirms a wet spot on his ceiling → 2.1 turns red ("confirmed"), 2.1 is added to the plumber's job.
 6. **Photo:** GPT vision sees water near the ceiling lamp → the job also needs an **electrician**. Reasoning: "No electrician connected yet."
@@ -46,7 +46,7 @@ Cast: Julian = Daniel (English, laptop). Emil = Herr Krueger (German, real phone
 ### Scenarios the system must handle (and test)
 | Scenario | Expected behaviour |
 |---|---|
-| Leak on a riser | caretaker gets a message to close that riser's main valve (with its location); every flat on the riser gets a "water off" message; after the plumber's result a "water back on" message |
+| Leak on a riser | approval requests closure at the listed flats’ shutoff valves; only those flats receive shutoff and restoration notices after the respective confirmations |
 | Neighbour answers, damage found | `affected` risk `confirmed`, unit red, added to the plumber job (the proposal is written again, or, if already approved, the plumber gets a `message`) |
 | Neighbour answers, no damage | risk `clear`, unit green |
 | No answer or voicemail | `message` right away, `call_retry_scheduled`, retry after `RETRY_DELAY_MINUTES`, at most 2 retries; after the last one a message to the caretaker to check the flat |
@@ -111,7 +111,7 @@ Emil's server keeps all state in memory and writes it to `data/state.json` (git-
 | `call_retry_scheduled` | `{to_tenant_id, attempt, at}`; `at` is always an ISO timestamp (demo clock). The screen formats it as "Retry at HH:MM" |
 | `message` | `{to, text}` (to = tenant ID, `owner`, `caretaker` or partner ID; shown in the outbox) |
 | `photo` | `{url, assessment: {damage, severity, urgent, electrics}}` |
-| `partner_job_proposed` | same fields as `partner_job`; visible only on `/dashboard` (the property manager). **May be written again for the same `partner_id`** while it is not approved (the photo arrived, a unit was confirmed): the latest one per `partner_id` wins, older ones are ignored |
+| `partner_job_proposed` | same fields as `partner_job`, plus `water_shutoff_units` for the plumber; visible only on `/dashboard` (the property manager). **May be written again for the same `partner_id`** while it is not approved (the photo arrived, a unit was confirmed): the latest one per `partner_id` wins, older ones are ignored |
 | `partner_job_approved` | `{partner_id}`, actor `property_manager` |
 | `partner_job` | `{partner_id, role, shared: {...}, withheld: [field names], briefing}` |
 | `slot_confirmed` | `{partner_id, slot}` |
@@ -121,8 +121,8 @@ Emil's server keeps all state in memory and writes it to `data/state.json` (git-
 | `connector_drafted` | `{connector}` |
 | `connector_activated` | `{partner_id}` |
 | `cost` | `{total_eur, breakdown: {voice_eur, phone_eur, openai_eur}}` |
-| `water_shutoff_requested` | `{riser_id}`; the Dirigent asked the caretaker to close the riser valve |
-| `water_status_confirmed` | `{riser_id, status}`; status `off` or `restored`, actor `caretaker` |
+| `water_shutoff_requested` | `{riser_id, units}`; plumber approval requested closure at the listed flats’ own shutoff valves |
+| `water_status_confirmed` | `{riser_id, units, status}`; status `off` or `restored`, actor `caretaker` |
 
 A case has one or more partner jobs (plumber, electrician). The case is `resolved` when every approved partner has reported a result.
 
@@ -137,7 +137,7 @@ A case has one or more partner jobs (plumber, electrician). The case is `resolve
 | `GET /api/partner-job?case_id=&partner_id=` | | `{case, partner_id, role, shared, withheld, briefing}`; error before approval |
 | `POST /api/cases/[id]/slot` | `{partner_id, slot}` | `{ok: true}` |
 | `POST /api/cases/[id]/result` | `{partner_id, cost_eur, work_description}` | `{ok: true}` |
-| `POST /api/cases/[id]/water-status` | `{status}`: `off` or `restored` | `{ok: true}`; the manager clicks it after the caretaker confirms the riser valve was closed or reopened. Writes `water_status_confirmed` and messages every flat on the riser. `restored` only after the plumber's result; otherwise `409` |
+| `POST /api/cases/[id]/water-status` | `{status}`: `off` or `restored` | `{ok: true}`; the manager clicks it after the caretaker confirms the requested flats’ valves were closed or reopened. Writes `water_status_confirmed` and messages only those flats. `restored` only after the plumber's result; otherwise `409` |
 | `POST /api/connectors/draft` | `{partner_text}` | `{connector}` |
 | `POST /api/connectors/activate` | `{connector, case_id}` | `{ok: true}`; if `case_id` is given, the new partner is proposed for that case right away |
 | `POST /api/events` | `{type: "move_in", unit_id, tenant_id, date}` | `{case_id}` (stage 3 only) |
@@ -178,12 +178,12 @@ All screens follow Apple's Human Interface Guidelines, with the iOS UI kit from 
 - `lib/store.ts`: state in memory + `data/state.json`, `addEvent()`, `reset()`. **The state object and all retry timers live on `globalThis`** (`globalThis.__dirigent ??= {...}`). Without this, Next.js gives every API route its own copy and throws timers away on every code reload, so the retry call never happens. `reset()` clears the timers.
 - `lib/clock.ts`: `now()` = `DEMO_NOW` + real time since the last reset; real time if `DEMO_NOW` is empty. Every `at`, `created_at` and retry `at` uses it.
 - `lib/building.ts`: `findAffectedUnits(unitId, incidentType)` by the rule in `data/building.json` (above = source, below = high, further down the riser and cellar = check). It also returns the riser: `{id, main_valve, units}`.
-- **Water off:** right after the graph walk the Dirigent calls `message_caretaker` (close the riser's main valve, with the location from `main_valve`) and `message_resident` for every flat on the riser (water off until the plumber is done). When the plumber's result arrives: `message_resident` "water is back on" to the same flats.
+- **Water off:** the plumber proposal starts with `water_shutoff_units` containing the reporting flat and adds any neighbouring flat with confirmed damage before approval. Approving the plumber job records `water_shutoff_requested` with the riser ID and approved flats and asks the caretaker to close each flat’s own valve. The operator confirms shutoff before the outbox notifies those flats. The plumber result requests reopening, and the operator confirms restoration before the same flats are notified.
 - `lib/dirigent.ts`: OpenAI **Responses API** with function calling. Tools: `find_affected_units`, `call_resident(tenant_id, purpose)`, `message_resident(tenant_id, text)`, `propose_partner_job(role)`, `message_owner(text)`, `message_caretaker(text)`, `log_reasoning(text)`. Code executes, every call writes an event. The model may explain but never invent parties. The model gets the building without `providers`: partners exist for it only as **active connectors**.
 - **Approval:** `propose_partner_job` writes `partner_job_proposed` and sets the case to `pending_approval`. `POST /api/cases/[id]/approve` releases that partner's job once (`partner_job_approved`, `partner_job`, status `dispatched`). Partner routes reject requests before approval. Resident calls and messages run while approval is pending. **Updating a job:** when the photo assessment arrives or a unit is confirmed and the job is not approved yet, write `partner_job_proposed` again with the new fields. If it is already approved, send the partner a `message` instead and add the unit to the stored job.
 - **Electrician:** if the photo assessment says `electrics: true`, the Dirigent proposes role `electrician`. If no active connector has that role, it writes a reasoning event ("No electrician connected yet") and waits. `POST /api/connectors/activate` with `case_id` then proposes the new partner for that case.
 - `lib/contextPass.ts`: shared/withheld fields by code from `share_with` and the connector's role; the model only writes the briefing and gets only the `shared` fields for it. **Allowlist:** a field is shared only if the connector's `handover.required` names it and the role is allowed; everything else is withheld, also fields without a `share_with` (for example `main_door_code`). The caretaker's name and phone are shared, the key safe code never.
-- `lib/calls.ts`: `startResidentCall(tenantId, purpose, attempt)`. Dry run: `call_started` + fake `call_ended` (attempt 1 `no_answer`, attempt 2 `answered` with `damage_found: true`, so the whole scenario can be tested without phones). Real: ElevenLabs Twilio outbound call (agent `resident_call`, `ELEVENLABS_PHONE_NUMBER_ID`, number from env, dynamic variables, overrides for language and first message), then poll the conversation every 5 s until done. Not picked up, failed, or ended by voicemail detection → `no_answer`. Answered → GPT-6 Luna reads the transcript and sets `damage_found` and `summary`. The `details` variable for the call says that the water on the riser is off for now, and on a retry also that a message was sent a moment ago, so the agent can refer to it.
+- `lib/calls.ts`: `startResidentCall(tenantId, purpose, attempt)`. Dry run: `call_started` + fake `call_ended` (attempt 1 `no_answer`, attempt 2 `answered` with `damage_found: true`, so the whole scenario can be tested without phones). Real: ElevenLabs Twilio outbound call (agent `resident_call`, `ELEVENLABS_PHONE_NUMBER_ID`, number from env, dynamic variables, a language override while the agent supplies its greeting), then poll the conversation every 5 s until done. Not picked up, failed, or ended by voicemail detection → `no_answer`. Answered → GPT-6 Luna reads the transcript and sets `damage_found` and `summary`. The `details` variable explains that the caretaker will shut off water in the flat above and in the called flat only if damage is found. On retries it also mentions the previous message.
 - **Retry:** on `no_answer`: `message` to the tenant right away, `call_retry_scheduled` with `at` = now + `RETRY_DELAY_MINUTES`, then `setTimeout` for the next attempt (max 2 retries). After the last failed attempt: `message` to the caretaker. On `damage_found: true`: `affected` `confirmed` and the unit goes into the plumber's `affected_units`. On `false`: `affected` `clear`.
 - `lib/connectors.ts`: loads `connectors/*.json` + activated connectors from the state; `/api/connectors/draft` gives the model the allowed roles, agents and channels and validates against `connectors/schema.json` (ajv).
 - `lib/cost.ts`: OpenAI tokens + call minutes at production prices (7.6) → `cost` event when the case is resolved.
@@ -237,7 +237,7 @@ Scale for the video: 100,000 flats → 150,000 cases → 750,000 staff hours per
 
 ## 9. Scope
 
-**Stage 1, MUSS (Gate 1):** tenant page + `tenant_intake`, Dirigent with graph walk (source, high, check), call to 2.1 with no-answer → message → retry → answered → confirmed, photo + vision, manager approval, plumber partner page with slot and result, maintenance log, messages, building cross-section + reasoning + outbox, tracking page, reset, connector spec doc, water off (caretaker closes the riser valve + messages to every flat on the riser), store and timers on `globalThis`, demo clock, ISO retry time, latest proposal per partner on the review card.
+**Stage 1, MUSS (Gate 1):** tenant page + `tenant_intake`, Dirigent with graph walk (source, high, check), call to 2.1 with no-answer → message → retry → answered → confirmed, photo + vision, manager approval, plumber partner page with slot and result, maintenance log, messages, building cross-section + reasoning + outbox, tracking page, reset, connector spec doc, apartment-level shutoff and restoration after operator confirmation, store and timers on `globalThis`, demo clock, ISO retry time, latest proposal per partner on the review card.
 **Stage 2, SOLL (00:00 to 03:00), in this order:** live electrician plug-in in the same case (deliverable B), map + list overview, touchpoint counter + cost counter, connector checks + three connector cards, context pass panel with blurring, tool chips.
 **Stage 3, only if all done before 02:00:** owner approval above 500 EUR, move-in with internet (ISP example), storm night.
 **Do NOT build:** hosting, database service, map service, WhatsApp, inbound phone calls, logins, a real centrix API, payments, a building editor, a mobile app.
@@ -251,7 +251,7 @@ Recorded on the demo laptop with `npm run build && npm start` and `DEMO_NOW` set
 | Time | Scene |
 |---|---|
 | 0:00 to 0:10 | Map of Duesseldorf, 8 calm buildings. One turns red and pulses. Title: "1 report instead of 12 calls." |
-| 0:10 to 0:32 | DETECT THE MOMENT: Daniel reports in English, photo. Cross-section: 3.1 red, water down riser A, 4.1 yellow (possible source), 2.1 orange. Caretaker closes the riser valve, all four flats informed. |
+| 0:10 to 0:32 | DETECT THE MOMENT: Daniel reports in English, photo. Cross-section: 3.1 red, water down riser A, 4.1 yellow (possible source), 2.1 orange. Show the affected flats that will be included in the shutoff request at approval. |
 | 0:32 to 1:00 | **The headline moment.** On screen: "Herr Krueger never called us. We called him." No answer → message → retry (6 seconds, fast). Retry: he picks up (split screen, German, subtitles), confirms a wet spot → 2.1 red, added to the job. Picture in picture, 3 seconds: "And if he says no?" → he answers that everything is dry → 2.1 green. |
 | 1:00 to 1:25 | Photo shows the lamp → "No electrician connected yet" → paste Elektro Schmitz text → connector → Activate. "Every new partner is a config, not a project." |
 | 1:25 to 1:45 | HAND OVER CONTEXT: review card, rent and key safe code blurred, **Approve and send**. HOLD THE CONVERSATION: plumber and electrician confirm 16:00, caretaker opens. |

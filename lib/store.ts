@@ -115,7 +115,12 @@ function refreshPlumberJob(events: DemoEvent[], input: NewEvent): DemoEvent[] {
     shared.damage_assessment = input.payload.assessment;
   }
 
-  const revised = { ...proposal, payload: { ...proposal.payload, shared } };
+  const payload = { ...proposal.payload, shared } as NewEvent["payload"];
+  if (confirmed && !job && typeof input.payload.unit_id === "string") {
+    const units = Array.isArray(payload.water_shutoff_units) ? payload.water_shutoff_units : [shared.unit_id];
+    payload.water_shutoff_units = [...new Set([...units, input.payload.unit_id])];
+  }
+  const revised = { ...proposal, payload };
   if (!job) return [...events, stampEvent(revised)];
 
   const notice = stampEvent({
@@ -224,6 +229,25 @@ export function approvePartnerJob(caseId: string, partnerId: string): "approved"
     },
   ];
 
+  const riser = partnerId === plumber.partner_id && demoCase.type === "water_leak"
+    ? findRiser(demoCase.unit_id) : null;
+  if (riser) {
+    const proposedUnits = Array.isArray(proposal.payload.water_shutoff_units)
+      ? proposal.payload.water_shutoff_units : [];
+    const units = [...new Set([demoCase.unit_id, ...proposedUnits])]
+      .filter((unit): unit is string => typeof unit === "string" && riser.units.includes(unit));
+    approvalEvents.push(
+      { case_id: caseId, kind: "water_shutoff_requested", actor: "dirigent", payload: { riser_id: riser.id, units } },
+      {
+        case_id: caseId, kind: "message", actor: "dirigent",
+        payload: {
+          to: "caretaker",
+          text: `Bitte Wasser in Wohnung ${units.join(" und ")} am Absperrventil der Wohnung abstellen.`,
+        },
+      },
+    );
+  }
+
   saveState({
     ...state,
     cases: state.cases.map((item) => item.id === caseId ? dispatched : item),
@@ -314,13 +338,14 @@ export function updatePartnerJob(caseId: string, partnerId: string, update: Part
         text: `Job ${partnerId} for unit ${demoCase.unit_id} completed for EUR ${update.payload.cost_eur}. ${update.payload.work_description}`,
       },
     });
-    const riser = findRiser(demoCase.unit_id);
-    if (riser && job.payload.role === "plumber" && isWaterOff(caseId)) {
+    const shutoff = events.findLast((event) => event.kind === "water_status_confirmed");
+    const units = shutoff?.payload.units;
+    if (job.payload.role === "plumber" && shutoff?.payload.status === "off" && Array.isArray(units)) {
       updates.push({
         case_id: caseId, kind: "message", actor: "dirigent",
         payload: {
           to: "caretaker",
-          text: `The plumber has finished. Please reopen the main valve for ${riser.id} at ${riser.main_valve} and confirm once water service is restored.`,
+          text: `Bitte Wasser in Wohnung ${units.join(" und ")} am Absperrventil der Wohnung wieder anstellen und bestätigen.`,
         },
       });
     }
@@ -335,21 +360,19 @@ export function updatePartnerJob(caseId: string, partnerId: string, update: Part
   return "ok";
 }
 
-export function isWaterOff(caseId: string): boolean {
-  const latest = currentState().events.findLast((event) =>
-    event.case_id === caseId && event.kind === "water_status_confirmed",
-  );
-  return latest?.payload.status === "off";
-}
-
 export function confirmWaterStatus(caseId: string, status: "off" | "restored") {
   const state = currentState();
   const demoCase = state.cases.find((item) => item.id === caseId);
   if (!demoCase) return "missing";
 
-  const riser = findRiser(demoCase.unit_id);
   const events = state.events.filter((event) => event.case_id === caseId);
-  if (!riser || !events.some((event) => event.kind === "water_shutoff_requested")) return "conflict";
+  const request = events.findLast((event) => event.kind === "water_shutoff_requested");
+  const riser = findRiser(demoCase.unit_id);
+  const requestedUnits = request?.payload.units;
+  if (!riser || !Array.isArray(requestedUnits) || request?.payload.riser_id !== riser.id) return "conflict";
+
+  const units = requestedUnits.filter((unit): unit is string => typeof unit === "string" && riser.units.includes(unit));
+  if (!units.length) return "conflict";
 
   const latest = events.findLast((event) => event.kind === "water_status_confirmed");
   if (latest?.payload.status === status) return "ok";
@@ -360,17 +383,17 @@ export function confirmWaterStatus(caseId: string, status: "off" | "restored") {
 
   const updates: NewEvent[] = [{
     case_id: caseId, kind: "water_status_confirmed", actor: "caretaker",
-    payload: { riser_id: riser.id, status },
+    payload: { riser_id: riser.id, units, status },
   }];
-  const recipients = new Set(building.units.filter((unit) => riser.units.includes(unit.id)).map((unit) => unit.tenant_id));
+  const recipients = new Set(building.units.filter((unit) => units.includes(unit.id)).map((unit) => unit.tenant_id));
   for (const to of recipients) {
     updates.push({
       case_id: caseId, kind: "message", actor: "dirigent",
       payload: {
         to,
         text: status === "off"
-          ? "The water on your riser is off for now while the leak is repaired."
-          : "The water on your riser is back on.",
+          ? "Wasser ist vorübergehend abgestellt."
+          : "Das Wasser ist wieder an.",
       },
     });
   }
