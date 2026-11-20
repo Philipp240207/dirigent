@@ -1,6 +1,7 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import OpenAI from "openai";
 import { now } from "./clock";
+import { estimateOpenAiEur } from "./cost";
 import { addEvent, getState, scheduleRetry, type NewEvent } from "./store";
 
 const apiBase = "https://api.elevenlabs.io/v1/convai";
@@ -41,9 +42,9 @@ function callStarted(call: ResidentCall, attempt: number, dryRun: boolean): NewE
 
 type TranscriptTurn = { role: string; message?: string | null; tool_calls?: { tool_name?: string }[] };
 
-async function assessDamage(transcript: TranscriptTurn[]): Promise<boolean | null> {
+async function assessDamage(transcript: TranscriptTurn[]) {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
-  if (!apiKey) return null;
+  if (!apiKey) return { damageFound: null, openAiEur: 0 };
   const client = new OpenAI({ apiKey, timeout: 15_000, maxRetries: 0 });
   const response = await client.responses.create({
     model: process.env.OPENAI_MODEL_FAST?.trim() || "gpt-6-luna",
@@ -51,13 +52,16 @@ async function assessDamage(transcript: TranscriptTurn[]): Promise<boolean | nul
     input: JSON.stringify(transcript.map(({ role, message }) => ({ role, message }))),
   });
   const result = response.output_text.trim();
-  return result === "true" ? true : result === "false" ? false : null;
+  return {
+    damageFound: result === "true" ? true : result === "false" ? false : null,
+    openAiEur: estimateOpenAiEur("fast", response.usage),
+  };
 }
 
 export async function startResidentCall(call: ResidentCall, attempt = 1) {
   const caseExists = () => getState().cases.some(({ id }) => id === call.caseId);
-  const record = (event: NewEvent) => {
-    if (caseExists()) addEvent(event);
+  const record = (event: NewEvent, openAiEur = 0) => {
+    if (caseExists()) addEvent(event, openAiEur);
   };
   const explain = (text: string) => record({
     case_id: call.caseId,
@@ -66,7 +70,7 @@ export async function startResidentCall(call: ResidentCall, attempt = 1) {
     payload: { text },
   });
 
-  const finish = (outcome: "answered" | "no_answer", damageFound: boolean | null, duration: number, summary: string) => {
+  const finish = (outcome: "answered" | "no_answer", damageFound: boolean | null, duration: number, summary: string, openAiEur = 0) => {
     if (!caseExists()) return;
     record({
       case_id: call.caseId, actor: "dirigent", kind: "call_ended",
@@ -74,7 +78,7 @@ export async function startResidentCall(call: ResidentCall, attempt = 1) {
         to_tenant_id: call.tenantId, attempt, outcome, damage_found: damageFound,
         duration_s: duration, summary,
       },
-    });
+    }, openAiEur);
     if (damageFound !== null) {
       record({
         case_id: call.caseId, actor: "dirigent", kind: "affected",
@@ -196,8 +200,8 @@ export async function startResidentCall(call: ResidentCall, attempt = 1) {
         return;
       }
 
-      const damageFound = await assessDamage(transcript).catch(() => null);
-      finish("answered", damageFound, duration, conversation.analysis?.transcript_summary || "Resident call completed.");
+      const { damageFound, openAiEur } = await assessDamage(transcript).catch(() => ({ damageFound: null, openAiEur: 0 }));
+      finish("answered", damageFound, duration, conversation.analysis?.transcript_summary || "Resident call completed.", openAiEur);
       return;
     }
     explain("Stopped polling ElevenLabs before it reported the call’s outcome.");

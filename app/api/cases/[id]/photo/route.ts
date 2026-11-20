@@ -34,21 +34,22 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return Response.json({ error: "Set OPENAI_API_KEY and OPENAI_MODEL_MAIN to enable assessment." }, { status: 503 });
   }
 
-  let assessment;
+  let photo;
   try {
-    assessment = await assessPhoto(bytes, photoTypes[extension], apiKey, model);
+    photo = await assessPhoto(bytes, photoTypes[extension], apiKey, model);
   } catch {
     return Response.json({ error: "Photo assessment failed. Check the configured OpenAI key and vision model, then retry." }, { status: 502 });
   }
   if (!caseExists()) return missingCase();
 
+  const { assessment, openAiEur } = photo;
   const fileName = `${randomUUID()}.${extension}`;
   const path = join(uploadsDirectory, fileName);
   const url = `/api/uploads/${fileName}`;
   mkdirSync(uploadsDirectory, { recursive: true });
   writeFileSync(path, bytes, { flag: "wx" });
   try {
-    addEvent({ case_id: id, kind: "photo", actor: "dirigent", payload: { url, assessment } });
+    addEvent({ case_id: id, kind: "photo", actor: "dirigent", payload: { url, assessment } }, openAiEur);
   } catch (error) {
     rmSync(path, { force: true });
     throw error;
