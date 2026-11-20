@@ -596,3 +596,7 @@ summary:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
 .partner-progress p { margin: .2rem 0; }
 .partner-progress[data-step="calling"] { background: #fff6e8; border-color: #f0d9b0; }
 .partner-call-link { display: inline-block; margin-top: .6rem; padding: .7rem 1rem; color: #fff; text-decoration: none; font-weight: 600; min-height: 44px; }
+
+/* Caretaker water shut-off line on the review card and after approval */
+.caretaker-line { margin: .3rem 0; }
+.caretaker-note { margin-block: .8rem; padding: .6rem .8rem; border-radius: 10px; background: #eaf2fb; border: 1px solid #c7dbf2; font-weight: 600; }
