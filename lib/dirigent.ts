@@ -16,19 +16,11 @@ export function buildLeakTimeline(demoCase: DemoCase, description: string) {
 
   for (const unit of affected) {
     record("affected", unit);
-    if (unit.unit_id === unit_id || unit.risk === "check") continue;
+    if (unit.risk !== "high") continue;
 
     const residentUnit = building.units.find((flat) => flat.id === unit.unit_id);
     const resident = building.parties.tenants.find((tenant) => tenant.id === residentUnit?.tenant_id);
     if (!resident) continue;
-
-    if (unit.risk === "low") {
-      record("message", {
-        to: resident.id,
-        text: "Water was reported upstairs. Please check for signs of water and contact property management if you notice any.",
-      });
-      continue;
-    }
 
     const purpose = `High water risk: ${unit.unit_id} is directly below ${unit_id} on the same riser.`;
     const call: ResidentCall = {
@@ -57,7 +49,7 @@ export function buildLeakTimeline(demoCase: DemoCase, description: string) {
 
   record("partner_job_proposed", buildPlumberProposal(
     unit_id,
-    affected.map((unit) => unit.unit_id),
+    affected.filter((unit) => unit.risk !== "source").map((unit) => unit.unit_id),
     ceilingLeak,
   ));
   record("status_change", { status: "pending_approval" });

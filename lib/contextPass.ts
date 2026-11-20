@@ -6,15 +6,17 @@ export function buildPlumberProposal(
   affectedUnits: string[],
   ceilingLeak: boolean,
 ) {
-  const access = building.infrastructure.access;
+  const caretaker = building.parties.caretaker;
 
   // Only controlled building fields and fixed summaries enter the handoff.
   // Tenant free text can contain rent or payment information.
   const shared = {
     address: building.address,
     unit_id: unitId,
-    access_info:
-      `Main door code: ${access.main_door_code}. Key safe: ${access.key_safe}. Cellar key: ${access.cellar_key}.`,
+    ...(plumber.handover.required.includes("caretaker_contact") &&
+      caretaker.share_with.name.includes(plumber.role)
+      ? { caretaker_contact: caretaker.name }
+      : {}),
     affected_units: affectedUnits,
     problem_description: ceilingLeak
       ? `Water is reported coming through the ceiling of apartment ${unitId}.`
@@ -28,6 +30,8 @@ export function buildPlumberProposal(
   );
   const withheld = new Set([
     ...Array.from(deniedFields),
+    "main_door_code",
+    "cellar_key",
     "tenant_report_free_text",
     ...building.parties.tenants.flatMap((tenant) =>
       Object.keys(tenant).filter((field) => field !== "share_with"),
