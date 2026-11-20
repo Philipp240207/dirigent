@@ -11,6 +11,19 @@ type LeakAssessment = {
   likelySource: { unit_id: string; reason: string } | null;
 };
 
+export function findRiser(unitId: string) {
+  const riser = building.infrastructure.risers.find((pipe) => pipe.connects.includes(unitId));
+  return riser ? describeRiser(riser) : null;
+}
+
+function describeRiser(riser: (typeof building.infrastructure.risers)[number]) {
+  return {
+    id: riser.id,
+    main_valve: riser.main_valve,
+    units: riser.connects.filter((id) => id !== "cellar"),
+  };
+}
+
 export function findAffectedUnits(
   unitId: string,
   incidentType: string,
@@ -48,11 +61,7 @@ export function findAffectedUnits(
 
   return {
     affected,
-    riser: {
-      id: riser.id,
-      main_valve: riser.main_valve,
-      units: riser.connects.filter((id) => id !== "cellar"),
-    },
+    riser: describeRiser(riser),
     likelySource: source
       ? { unit_id: source.id, reason: "Ceiling leak, same riser, directly above." }
       : null,
