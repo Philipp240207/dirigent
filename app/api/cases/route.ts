@@ -25,7 +25,8 @@ export async function POST(request: Request) {
     created_at: new Date().toISOString(),
   };
 
-  saveNewCase(demoCase, [
+  const timeline = buildLeakTimeline(demoCase, input.description);
+  saveNewCase({ ...demoCase, status: "pending_approval" }, [
     {
       case_id: demoCase.id,
       kind: "case_created",
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
         description: input.description.trim(),
       },
     },
-    ...buildLeakTimeline(demoCase, input.description),
+    ...timeline,
   ]);
 
   return Response.json({ case_id: demoCase.id });

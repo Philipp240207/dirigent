@@ -1,5 +1,6 @@
 import building from "../data/building.json";
 import { findAffectedUnits } from "./building";
+import { buildPlumberProposal } from "./contextPass";
 import type { DemoCase, NewEvent } from "./store";
 
 export function buildLeakTimeline(demoCase: DemoCase, description: string): NewEvent[] {
@@ -56,6 +57,13 @@ export function buildLeakTimeline(demoCase: DemoCase, description: string): NewE
       });
     }
   }
+
+  record("partner_job_proposed", buildPlumberProposal(
+    unit_id,
+    affected.map((unit) => unit.unit_id),
+    ceilingLeak,
+  ));
+  record("status_change", { status: "pending_approval" });
 
   return events;
 }

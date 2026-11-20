@@ -67,25 +67,70 @@ export function getState(): DemoState {
   return structuredClone(currentState());
 }
 
+function stampEvent(input: NewEvent): DemoEvent {
+  return { ...structuredClone(input), id: randomUUID(), at: new Date().toISOString() };
+}
+
 export function addEvent(input: NewEvent): DemoEvent {
   const state = currentState();
-  const event = { ...structuredClone(input), id: randomUUID(), at: new Date().toISOString() };
+  const event = stampEvent(input);
   saveState({ ...state, events: [...state.events, event] });
   return structuredClone(event);
 }
 
 export function saveNewCase(demoCase: DemoCase, inputs: NewEvent[]) {
   const state = currentState();
-  const events = inputs.map((input) => ({
-    ...structuredClone(input),
-    id: randomUUID(),
-    at: new Date().toISOString(),
-  }));
+  const events = inputs.map(stampEvent);
   saveState({
     ...state,
     cases: [...state.cases, structuredClone(demoCase)],
     events: [...state.events, ...events],
   });
+}
+
+export function approvePlumberJob(caseId: string): "approved" | "missing" | "not_ready" {
+  const state = currentState();
+  const demoCase = state.cases.find((item) => item.id === caseId);
+  if (!demoCase) return "missing";
+
+  const events = state.events.filter((event) => event.case_id === caseId);
+  if (events.some((event) => event.kind === "partner_job")) return "approved";
+
+  const proposal = events.findLast((event) => event.kind === "partner_job_proposed");
+  if (demoCase.status !== "pending_approval" || !proposal ||
+      proposal.payload.partner_id !== plumber.partner_id ||
+      proposal.payload.status !== "awaiting_approval") {
+    return "not_ready";
+  }
+
+  const dispatched: DemoCase = { ...demoCase, status: "dispatched" };
+  const approvalEvents: NewEvent[] = [
+    {
+      case_id: caseId,
+      kind: "partner_job_approved",
+      actor: "property_manager",
+      payload: { partner_id: plumber.partner_id },
+    },
+    {
+      case_id: caseId,
+      kind: "partner_job",
+      actor: "dirigent",
+      payload: { ...proposal.payload, status: "sent" },
+    },
+    {
+      case_id: caseId,
+      kind: "status_change",
+      actor: "dirigent",
+      payload: { status: dispatched.status },
+    },
+  ];
+
+  saveState({
+    ...state,
+    cases: state.cases.map((item) => item.id === caseId ? dispatched : item),
+    events: [...state.events, ...approvalEvents.map(stampEvent)],
+  });
+  return "approved";
 }
 
 export function reset() {
