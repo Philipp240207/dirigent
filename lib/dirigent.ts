@@ -57,7 +57,7 @@ export function buildLeakTimeline(demoCase: DemoCase, description: string) {
 
   record("partner_job_proposed", buildPlumberProposal(
     unit_id,
-    affected.filter((unit) => unit.risk !== "source").map((unit) => unit.unit_id),
+    affected.filter((unit) => unit.risk === "confirmed" || unit.risk === "check").map((unit) => unit.unit_id),
     ceilingLeak,
   ));
   record("status_change", { status: "pending_approval" });

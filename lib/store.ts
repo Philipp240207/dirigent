@@ -86,10 +86,50 @@ function stampEvent(input: NewEvent): DemoEvent {
   return { ...structuredClone(input), id: randomUUID(), at: now().toISOString() };
 }
 
+function belongsToPartner(event: NewEvent, partnerId: string) {
+  const legacyUpdate = event.kind === "slot_confirmed" || event.kind === "result";
+  return (event.payload.partner_id ?? (legacyUpdate ? plumber.partner_id : undefined)) === partnerId;
+}
+
+function refreshPlumberJob(events: DemoEvent[], input: NewEvent): DemoEvent[] {
+  const confirmed = input.kind === "affected" && input.payload.risk === "confirmed";
+  if (input.kind !== "photo" && !confirmed) return events;
+
+  const job = events.findLast((event) => event.case_id === input.case_id &&
+    belongsToPartner(event, plumber.partner_id) && event.kind === "partner_job");
+  const proposal = job ?? events.findLast((event) => event.case_id === input.case_id &&
+    belongsToPartner(event, plumber.partner_id) && event.kind === "partner_job_proposed");
+  if (!proposal) return events;
+
+  const shared = { ...proposal.payload.shared as Record<string, unknown> };
+  if (confirmed) {
+    const units = Array.isArray(shared.affected_units) ? shared.affected_units : [];
+    if (units.includes(input.payload.unit_id)) return events;
+    shared.affected_units = [...units, input.payload.unit_id];
+  } else {
+    shared.damage_photo = input.payload.url;
+    shared.damage_assessment = input.payload.assessment;
+  }
+
+  const revised = { ...proposal, payload: { ...proposal.payload, shared } };
+  if (!job) return [...events, stampEvent(revised)];
+
+  const notice = stampEvent({
+    case_id: input.case_id, kind: "message", actor: "dirigent",
+    payload: {
+      to: plumber.partner_id,
+      text: confirmed
+        ? `Damage has been confirmed in unit ${input.payload.unit_id}. The affected units in your job have been updated.`
+        : "A new damage photo and assessment are available in your job.",
+    },
+  });
+  return [...events.map((event) => event.id === job.id ? revised : event), notice];
+}
+
 export function addEvent(input: NewEvent): DemoEvent {
   const state = currentState();
   const event = stampEvent(input);
-  saveState({ ...state, events: [...state.events, event] });
+  saveState({ ...state, events: refreshPlumberJob([...state.events, event], event) });
   return structuredClone(event);
 }
 
@@ -107,28 +147,28 @@ export function saveLeakTimeline(caseId: string, inputs: NewEvent[]): boolean {
   const state = currentState();
   if (!state.cases.some((item) => item.id === caseId && item.status === "open")) return false;
 
+  const pendingPhoto = state.events.findLast((event) => event.case_id === caseId && event.kind === "photo");
+  const events = [...state.events, ...inputs.map(stampEvent)];
   saveState({
     ...state,
     cases: state.cases.map((item) =>
       item.id === caseId ? { ...item, status: "pending_approval" } : item,
     ),
-    events: [...state.events, ...inputs.map(stampEvent)],
+    events: pendingPhoto ? refreshPlumberJob(events, pendingPhoto) : events,
   });
   return true;
 }
 
-export function approvePlumberJob(caseId: string): "approved" | "missing" | "not_ready" {
+export function approvePartnerJob(caseId: string, partnerId: string): "approved" | "missing" | "not_ready" {
   const state = currentState();
   const demoCase = state.cases.find((item) => item.id === caseId);
   if (!demoCase) return "missing";
 
-  const events = state.events.filter((event) => event.case_id === caseId);
+  const events = state.events.filter((event) => event.case_id === caseId && belongsToPartner(event, partnerId));
   if (events.some((event) => event.kind === "partner_job")) return "approved";
 
   const proposal = events.findLast((event) => event.kind === "partner_job_proposed");
-  if (demoCase.status !== "pending_approval" || !proposal ||
-      proposal.payload.partner_id !== plumber.partner_id ||
-      proposal.payload.status !== "awaiting_approval") {
+  if (!proposal || demoCase.status === "resolved") {
     return "not_ready";
   }
 
@@ -138,7 +178,7 @@ export function approvePlumberJob(caseId: string): "approved" | "missing" | "not
       case_id: caseId,
       kind: "partner_job_approved",
       actor: "property_manager",
-      payload: { partner_id: plumber.partner_id },
+      payload: { partner_id: partnerId },
     },
     {
       case_id: caseId,
@@ -162,40 +202,45 @@ export function approvePlumberJob(caseId: string): "approved" | "missing" | "not
   return "approved";
 }
 
-type PlumberUpdate =
+type PartnerUpdate =
   | { kind: "slot_confirmed"; payload: { slot: string } }
   | { kind: "result"; payload: { cost_eur: number; work_description: string } };
 
-export function updatePlumberJob(caseId: string, update: PlumberUpdate) {
+export function updatePartnerJob(caseId: string, partnerId: string, update: PartnerUpdate) {
   const state = currentState();
   const demoCase = state.cases.find((item) => item.id === caseId);
   if (!demoCase) return "missing";
 
   const events = state.events.filter((event) => event.case_id === caseId);
-  if (!events.some((event) => event.kind === "partner_job" &&
-      event.payload.partner_id === plumber.partner_id)) return "conflict";
+  const partnerEvents = events.filter((event) => belongsToPartner(event, partnerId));
+  const job = partnerEvents.findLast((event) => event.kind === "partner_job");
+  if (!job) return "conflict";
 
-  const previous = events.findLast((event) => event.kind === update.kind);
+  const previous = partnerEvents.findLast((event) => event.kind === update.kind);
   if (previous && Object.entries(update.payload).every(([key, value]) => previous.payload[key] === value)) {
     return "ok";
   }
 
   const scheduled = update.kind === "slot_confirmed";
-  if (demoCase.status !== "dispatched" && (scheduled || demoCase.status !== "scheduled")) {
-    return "conflict";
-  }
+  if (previous || partnerEvents.some((event) => event.kind === "result")) return "conflict";
 
-  const status = scheduled ? "scheduled" : "resolved";
+  const otherJobs = events.filter((event) => event.kind === "partner_job" && !belongsToPartner(event, partnerId));
+  const otherJobOpen = otherJobs.some((other) => !events.some((event) =>
+    event.kind === "result" && belongsToPartner(event, String(other.payload.partner_id)),
+  ));
+  const status = scheduled ? "scheduled" : otherJobOpen ? demoCase.status : "resolved";
   const updates: NewEvent[] = [
-    { case_id: caseId, actor: "partner_call", ...update },
+    { case_id: caseId, actor: "partner_call", ...update, payload: { ...update.payload, partner_id: partnerId } },
   ];
   if (update.kind === "result") {
     updates.push({
       case_id: caseId, kind: "maintenance_log", actor: "dirigent",
-      payload: { unit_id: demoCase.unit_id, partner_id: plumber.partner_id, ...update.payload },
+      payload: { unit_id: demoCase.unit_id, partner_id: partnerId, ...update.payload },
     });
   }
-  updates.push({ case_id: caseId, kind: "status_change", actor: "dirigent", payload: { status } });
+  if (status !== demoCase.status) {
+    updates.push({ case_id: caseId, kind: "status_change", actor: "dirigent", payload: { status } });
+  }
 
   const unitIds = new Set([demoCase.unit_id]);
   if (!scheduled) {
@@ -206,13 +251,14 @@ export function updatePlumberJob(caseId: string, update: PlumberUpdate) {
     }
   }
   const recipients = new Set(building.units.filter((unit) => unitIds.has(unit.id)).map((unit) => unit.tenant_id));
+  const partnerLabel = String(job.payload.role);
   for (const to of recipients) {
     updates.push({
       case_id: caseId, kind: "message", actor: "dirigent",
       payload: {
         to,
-        text: scheduled ? `The plumber is scheduled for ${update.payload.slot}.` :
-          `The plumbing repair for unit ${demoCase.unit_id} is complete.`,
+        text: scheduled ? `The ${partnerLabel} is scheduled for ${update.payload.slot}.` :
+          `The ${partnerLabel} has completed work for unit ${demoCase.unit_id}.`,
       },
     });
   }
@@ -221,11 +267,11 @@ export function updatePlumberJob(caseId: string, update: PlumberUpdate) {
       case_id: caseId, kind: "message", actor: "dirigent",
       payload: {
         to: "owner",
-        text: `Plumbing repair for unit ${demoCase.unit_id} completed for EUR ${update.payload.cost_eur}. ${update.payload.work_description}`,
+        text: `Job ${partnerId} for unit ${demoCase.unit_id} completed for EUR ${update.payload.cost_eur}. ${update.payload.work_description}`,
       },
     });
     const riser = findRiser(demoCase.unit_id);
-    if (riser && isWaterOff(caseId)) {
+    if (riser && job.payload.role === "plumber" && isWaterOff(caseId)) {
       updates.push({
         case_id: caseId, kind: "message", actor: "dirigent",
         payload: {
@@ -263,7 +309,7 @@ export function confirmWaterStatus(caseId: string, status: "off" | "restored") {
   const latest = events.findLast((event) => event.kind === "water_status_confirmed");
   if (latest?.payload.status === status) return "ok";
   if (status === "off" ? latest || demoCase.status === "resolved" :
-    latest?.payload.status !== "off" || !events.some((event) => event.kind === "result")) {
+    latest?.payload.status !== "off" || !events.some((event) => event.kind === "result" && belongsToPartner(event, plumber.partner_id))) {
     return "conflict";
   }
 
