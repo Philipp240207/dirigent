@@ -7,7 +7,7 @@ import { scenarioBuilding } from "../../../client/buildings"
 import { HomeLink } from "../home-link"
 import { LiveCaseActivity } from "./live-case-activity"
 import { LivePortfolio } from "./live-portfolio"
-import { LiveIncident } from "./live-incident"
+import { LiveIncident, type WaterStatus } from "./live-incident"
 import { JobContext } from "./job-context"
 
 type State = ReturnType<typeof getState>
@@ -100,6 +100,29 @@ export function LiveDashboard() {
     }
   }
 
+  async function confirmWater(caseId: string, status: WaterStatus) {
+    if (sending.current) return
+    sending.current = true
+    setBusy(`water:${caseId}`)
+    setError("")
+    try {
+      const result = await fetch(`/api/cases/${encodeURIComponent(caseId)}/water-status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      })
+      const updated = await loadState()
+      ++version.current
+      setState(updated)
+      if (!result.ok) setError(result.status === 409 ? "The case changed. Check the water status before retrying." : "Could not confirm the water status. Try again.")
+    } catch {
+      setError("Could not confirm the water status. Check the case before retrying.")
+    } finally {
+      sending.current = false
+      setBusy("")
+    }
+  }
+
   async function resetDemo() {
     if (sending.current) return
     sending.current = true
@@ -158,7 +181,8 @@ export function LiveDashboard() {
           <JobContext shared={fields} withheld={Array.isArray(withheld) ? withheld.filter((key): key is string => typeof key === "string") : []} sent={false} />
           <button className="case-action" disabled={Boolean(busy) || offline || containsPrivateAccess(fields)} onClick={() => approve(item.id, proposal.id)}>{busy === item.id ? "Sending…" : "Approve and send"}</button>
         </>}
-        {displayed === item.id ? <LiveIncident unit={item.unit_id} resolved={item.status === "resolved"} events={events} />
+        {displayed === item.id ? <LiveIncident unit={item.unit_id} resolved={item.status === "resolved"} events={events}
+          onWaterStatus={status => confirmWater(item.id, status)} waterBusy={busy === `water:${item.id}`} disabled={Boolean(busy) || offline} />
           : <button className="secondary" onClick={() => setSelectedCase(item.id)}>Show building and calls</button>}
         {displayed === item.id && <LiveCaseActivity events={events} />}
         <details className="demo-views"><summary>Demo views</summary><div>

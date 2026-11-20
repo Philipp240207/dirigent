@@ -520,6 +520,9 @@ summary:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
 
 .written-report textarea { font: inherit; }
 .live-water-status { margin-block: .8rem; }
+.live-water-status p { margin: 0 0 .5rem; }
+.live-water-status button { min-height: 44px; }
+.live-water-status #water-restore-note { margin: .4rem 0 0; font-size: .9rem; color: #5b6b62; }
 .live-portfolio { margin-bottom: 1rem; }
 .live-portfolio > .live-portfolio-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: .8rem; }
 .live-city-map {
