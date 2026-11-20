@@ -42,6 +42,7 @@ export function buildPlumberProposal(
     partner_id: plumber.partner_id,
     role: plumber.role,
     status: "awaiting_approval",
+    water_shutoff_units: [unitId],
     shared: allowedDetails,
     withheld: Array.from(withheld).sort(),
     briefing: "Investigate the leak and inspect the affected units. The cost estimate is for the demo.",
