@@ -103,7 +103,7 @@ export async function startResidentCall(call: ResidentCall, attempt = 1) {
 
     const delayMinutes = Number(process.env.RETRY_DELAY_MINUTES);
     const delay = Number.isFinite(delayMinutes) && delayMinutes > 0 && delayMinutes * 60_000 <= 2_147_483_647
-      ? delayMinutes * 60_000 : 60 * 60_000;
+      ? delayMinutes * 60_000 : 15_000;
     record({
       case_id: call.caseId, actor: "dirigent", kind: "call_retry_scheduled",
       payload: { to_tenant_id: call.tenantId, attempt: attempt + 1, at: new Date(now().getTime() + delay).toISOString() },
@@ -185,20 +185,22 @@ export async function startResidentCall(call: ResidentCall, attempt = 1) {
         transcript?: TranscriptTurn[];
         analysis?: { transcript_summary?: string };
       };
-      if (conversation.status !== "done" && conversation.status !== "failed") continue;
 
       const transcript = conversation.transcript ?? [];
       const callResult = conversation.metadata?.phone_call?.call_result;
+      const terminal = conversation.status === "done" || conversation.status === "failed";
       const missed = conversation.status === "failed" ||
-        ["voicemail", "busy", "no_answer", "failed"].includes(callResult ?? "") ||
-        /voicemail|no.answer|busy/i.test(conversation.metadata?.termination_reason ?? "") ||
+        ["voicemail", "busy", "no_answer", "failed", "declined", "rejected"].includes(callResult ?? "") ||
+        /voicemail|no.answer|busy|declin|reject/i.test(conversation.metadata?.termination_reason ?? "") ||
         transcript.some(({ tool_calls }) => tool_calls?.some(({ tool_name }) => tool_name === "voicemail_detection")) ||
-        (callResult !== "answered" && !transcript.some(({ role, message }) => role === "user" && message?.trim()));
+        (terminal && callResult !== "answered" && !transcript.some(({ role, message }) => role === "user" && message?.trim()));
       const duration = conversation.metadata?.call_duration_secs ?? 0;
       if (missed) {
         finish("no_answer", null, duration, "The resident could not be reached.");
         return;
       }
+
+      if (!terminal) continue;
 
       const { damageFound, openAiEur } = await assessDamage(transcript).catch(() => ({ damageFound: null, openAiEur: 0 }));
       finish("answered", damageFound, duration, conversation.analysis?.transcript_summary || "Resident call completed.", openAiEur);
