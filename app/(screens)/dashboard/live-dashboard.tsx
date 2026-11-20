@@ -53,6 +53,22 @@ function partnerProgress(state: State, caseId: string, partnerId: string) {
   }
 }
 
+// Flats where the caretaker shuts off the water: water_shutoff_units from the proposal or job when
+// the server sends it, otherwise the reported and confirmed flats of the case.
+function shutoffUnits(state: State, caseId: string, payload?: Record<string, unknown>) {
+  const listed = payload?.water_shutoff_units
+  if (Array.isArray(listed)) return listed.filter((unit): unit is string => typeof unit === "string")
+  const events = state.events.filter(event => event.case_id === caseId)
+  if (!events.some(event => event.kind === "water_shutoff_requested")) return []
+  const risk = new Map<string, string>()
+  for (const event of events) {
+    if (event.kind === "affected" && typeof event.payload.unit_id === "string" && typeof event.payload.risk === "string") {
+      risk.set(event.payload.unit_id, event.payload.risk)
+    }
+  }
+  return [...risk].filter(([unit, value]) => value === "confirmed" && unit !== "cellar").map(([unit]) => unit)
+}
+
 function releasedPartners(state: State, caseId: string) {
   return [...new Set(state.events.flatMap(event => event.case_id === caseId && event.kind === "partner_job" &&
     typeof event.payload.partner_id === "string" ? [event.payload.partner_id] : []))]
@@ -225,6 +241,11 @@ export function LiveDashboard() {
             <h3>{partnerName(partnerId)}</h3>
             <p>{String(proposal.payload.briefing ?? "")}</p>
             <p><strong>Cost estimate</strong> {typeof fields.cost_estimate_eur === "number" ? `€${fields.cost_estimate_eur}` : "Pending"}</p>
+            {(() => {
+              const units = Array.isArray(proposal.payload.water_shutoff_units) || proposal.payload.role === "plumber"
+                ? shutoffUnits(state!, item.id, proposal.payload) : []
+              return units.length > 0 && <p className="caretaker-line"><strong>Caretaker:</strong> shut off water in flats {units.join(", ")}</p>
+            })()}
             {blocked && <p role="alert">This proposal contains private access details. A corrected proposal is needed before approval.</p>}
             <JobContext shared={fields} withheld={Array.isArray(withheld) ? withheld.filter((key): key is string => typeof key === "string") : []} sent={false} />
             <button className="case-action" disabled={Boolean(busy) || offline || blocked} onClick={() => approve(item.id, partnerId, proposal.id)}>
@@ -232,6 +253,12 @@ export function LiveDashboard() {
             </button>
           </div>
         })}
+        {(() => {
+          const job = events.findLast(event => event.kind === "partner_job" && event.payload.role === "plumber")
+          const waterConfirmed = events.some(event => event.kind === "water_status_confirmed")
+          const units = job && !waterConfirmed && item.status !== "resolved" ? shutoffUnits(state!, item.id, job.payload) : []
+          return units.length > 0 && <p className="caretaker-note" role="status">Caretaker asked to shut off water in {units.join(", ")}</p>
+        })()}
         {released.map(partnerId => {
           const progress = partnerProgress(state!, item.id, partnerId)
           const name = partnerName(partnerId)
