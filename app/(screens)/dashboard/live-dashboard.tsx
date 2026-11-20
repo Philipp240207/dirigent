@@ -1,9 +1,11 @@
 "use client"
 
+import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import type { getState } from "../../../lib/store"
 import { scenarioBuilding } from "../../../client/buildings"
 import { HomeLink } from "../home-link"
+import { LiveIncident } from "./live-incident"
 import { JobContext } from "./job-context"
 
 type State = ReturnType<typeof getState>
@@ -36,6 +38,7 @@ export function LiveDashboard() {
   const [offline, setOffline] = useState(false)
   const [busy, setBusy] = useState("")
   const [error, setError] = useState("")
+  const [selectedCase, setSelectedCase] = useState("")
   const version = useRef(0)
   const sending = useRef(false)
 
@@ -91,6 +94,7 @@ export function LiveDashboard() {
   }
 
   const cases = state?.cases.toReversed().sort((a, b) => Number(b.status === "pending_approval") - Number(a.status === "pending_approval"))
+  const displayed = cases?.some(item => item.id === selectedCase) ? selectedCase : cases?.[0]?.id
   return <main className="tracking-page">
     <header className="topbar"><HomeLink /><span className="mode">Property management</span></header>
     <div className="heading"><div><h1>Repair cases</h1><p>{scenarioBuilding.address}</p></div></div>
@@ -114,6 +118,12 @@ export function LiveDashboard() {
           <JobContext shared={fields} withheld={Array.isArray(withheld) ? withheld.filter((key): key is string => typeof key === "string") : []} sent={false} />
           <button className="case-action" disabled={Boolean(busy) || offline || containsPrivateAccess(fields)} onClick={() => approve(item.id, proposal.id)}>{busy === item.id ? "Sending…" : "Approve and send"}</button>
         </>}
+        {displayed === item.id ? <LiveIncident unit={item.unit_id} resolved={item.status === "resolved"} events={state!.events.filter(event => event.case_id === item.id)} />
+          : <button className="secondary" onClick={() => setSelectedCase(item.id)}>Show building and calls</button>}
+        <details className="demo-views"><summary>Demo views</summary><div>
+          <Link href={`/track/${item.id}`}>Resident tracking</Link>
+          {["dispatched", "scheduled", "resolved"].includes(item.status) && <Link href={`/partner/${item.id}`}>Plumber job</Link>}
+        </div></details>
       </section>
     })}</div>
   </main>

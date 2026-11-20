@@ -484,3 +484,19 @@ summary:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
 .building-apartment-links li small { display: block; color: var(--muted); }
 .row-action { display: inline-flex; align-items: center; gap: .25rem; }
 :where(button, .primary-link):not(:disabled):active { transform: translateY(1px); }
+.work-form { display: grid; gap: .9rem; margin-top: 1rem; }
+.work-form label { display: grid; gap: .35rem; font-weight: 600; }
+.work-form input, .work-form textarea { width: 100%; min-height: 44px; padding: .65rem; font: inherit; font-weight: 400; color: var(--ink); background: var(--paper); border: 1px solid var(--muted); border-radius: 6px; }
+.work-form :is(input, textarea):focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.live-group { margin-bottom: 1.2rem; }
+.live-group h2 { padding: 1rem 1.25rem 0; }
+
+.live-incident { margin-block: 1rem; }
+.live-incident .building { max-height: 23rem; }
+.live-incident .building-map { padding: .5rem; }
+.call-history { margin-top: 1rem; }
+.call-history h3 { margin-bottom: .45rem; }
+.call-history p { margin-block: .4rem; }
+.call-history time { color: var(--muted); font-variant-numeric: tabular-nums; }
+.call-history ol { padding-left: 1.3rem; }
+.call-history li { margin-block: .5rem; }

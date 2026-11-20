@@ -2,8 +2,8 @@
 
 import { HomeLink } from "../home-link"
 import Link from "next/link"
-import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react"
-import { buildings, buildingPortrait, buildingUnits, scenarioBuilding, type Building } from "../../../client/buildings"
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
+import { buildings, buildingPortrait, buildingUnits, scenarioBuilding } from "../../../client/buildings"
 import { advanceDemo, demoConnectorActivation, demoConnectorDraft, demoConnectorEnd, demoEnd, demoJob, demoMoveIn, demoReport, demoResult, demoSlot, emptyDemoSession, readConnectorDemo, readDemo, readDemoSession, readExampleJobs, subscribeDemoSession, writeDemoSession } from "../../../client/state"
 
 import { jobs, jobStatus } from "../partner/jobs"
@@ -14,20 +14,8 @@ import { ConnectorDemo } from "./connector-demo"
 import { JobContext } from "./job-context"
 import { PortfolioMap, type MapState } from "./portfolio-map"
 
-const rooms: Record<string, { x: number; y: number; width: number }> = {
-  "3.1": { x: 88.5, y: 220.5, width: 216 },
-  "2.1": { x: 88.5, y: 302.5, width: 216 },
-  "1.1": { x: 88.5, y: 384.5, width: 216 },
-  "4.1": { x: 88.5, y: 138.5, width: 216 },
-  cellar: { x: 88.5, y: 466.5, width: 511 },
-}
-const riskStyles: Record<string, { label: string; color: string }> = {
-  confirmed: { label: "Reported or confirmed", color: "#ff3b30" },
-  high: { label: "High risk", color: "#ff9500" },
-  source: { label: "Possible source", color: "#ffcc00" },
-  check: { label: "Inspection needed", color: "#858b8a" },
-  clear: { label: "Clear", color: "#34c759" },
-}
+import { BuildingSection, IncidentSection, riskStyles } from "./building-section"
+
 const statusLabels: Record<string, string> = {
   open: "Reported",
   pending_approval: "Awaiting approval",
@@ -46,22 +34,6 @@ const recipients: Record<string, string> = {
 }
 
 type DemoEvent = ReturnType<typeof readDemo>[number]
-
-function BuildingSection({ building, children }: { building: Building; children: ReactNode }) {
-  const apartments = `${buildingUnits(building).length} apartments`
-  return (
-    <details className="building-card section-fold" open>
-      <summary>
-        <img src={buildingPortrait(building)} alt="" />
-        <span>
-          <strong>Building section</strong>
-          <small>{building.id === scenarioBuilding.id ? `${apartments} · 2 water risers` : `${building.floors} floors · ${apartments}`}</small>
-        </span>
-      </summary>
-      {children}
-    </details>
-  )
-}
 
 const navPaths = {
   Portfolio: "M3 20V8l6-4 6 4v12M15 10h5v10H3m4-9h4m-4 4h4",
@@ -523,42 +495,7 @@ export function Dashboard({ startFromReport, initialBuildingId }: { startFromRep
                   </details>
                 )}
               </div>
-              <BuildingSection building={selectedBuilding}>
-                <div className="building-map" data-riser-active={riserActive}>
-                  <svg className="building" viewBox="64 26 560 552" role="img" aria-label={riserActive ? "Four floors and two water risers. Water leak on riser A." : "Four floors and two water risers."}>
-                    <image href="/mock/dirigent-building.svg" width="688" height="608" />
-                    {Object.entries(rooms).map(([unit, room]) => {
-                      const risk = unitRisk(unit)
-                      const style = riskStyles[risk]
-                      if (!style) return null
-                      return <rect key={unit} data-unit={unit} data-risk={risk} {...room} height={unit === "cellar" ? 81 : 73} rx="2"
-                        fill={risk === "check" ? "none" : style.color} fillOpacity=".26" stroke={style.color} strokeWidth="2.5">
-                        <title>{unit === "cellar" ? "Cellar" : `Apartment ${unit}`} · {style.label}</title>
-                      </rect>
-                    })}
-                    {riserActive && (
-                      <g className="active-riser" aria-hidden="true">
-                        <path d="M111 263v245" />
-                        <circle cx="111" cy="263" r="6" />
-                      </g>
-                    )}
-                  </svg>
-                </div>
-                {elapsed >= 0 && <ul className="building-legend" aria-label="Building status legend">
-                  {Object.entries(riskStyles).map(([risk, style]) => (
-                    <li key={risk}><span style={{ background: risk === "check" ? "transparent" : style.color, border: `2px solid ${style.color}` }} />{style.label}</li>
-                  ))}
-                </ul>}
-                <details className="building-disclosure">
-                  <summary>Apartments</summary>
-                  <ul className="building-apartment-links">
-                    {buildingUnits(selectedBuilding).map(unit => {
-                      const label = riskStyles[unitRisk(unit)]?.label
-                      return <li key={unit}>Apartment {unit}{label && <small>{label}</small>}</li>
-                    })}
-                  </ul>
-                </details>
-              </BuildingSection>
+              <IncidentSection unitRisk={unitRisk} reportedUnit="3.1" riserActive={riserActive} showLegend={elapsed >= 0} />
             </div>
           ) : (
             <div className="dashboard-grid building-detail-grid" key={selectedBuilding.id}>
