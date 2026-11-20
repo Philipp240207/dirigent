@@ -194,13 +194,13 @@ export function saveLeakTimeline(caseId: string, inputs: NewEvent[]): boolean {
   return true;
 }
 
-export function approvePartnerJob(caseId: string, partnerId: string): "approved" | "missing" | "not_ready" {
+export function approvePartnerJob(caseId: string, partnerId: string): "approved" | "already_approved" | "missing" | "not_ready" {
   const state = currentState();
   const demoCase = state.cases.find((item) => item.id === caseId);
   if (!demoCase) return "missing";
 
   const events = state.events.filter((event) => event.case_id === caseId && belongsToPartner(event, partnerId));
-  if (events.some((event) => event.kind === "partner_job")) return "approved";
+  if (events.some((event) => event.kind === "partner_job")) return "already_approved";
 
   const proposal = events.findLast((event) => event.kind === "partner_job_proposed");
   if (!proposal || demoCase.status === "resolved") {

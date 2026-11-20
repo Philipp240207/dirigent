@@ -1,3 +1,5 @@
+import { after } from "next/server";
+import { callPlumber } from "@/lib/plumberCall";
 import { approvePartnerJob } from "@/lib/store";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -11,6 +13,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (result === "missing") return Response.json({ error: "Case not found." }, { status: 404 });
   if (result === "not_ready") {
     return Response.json({ error: "No partner job is awaiting approval." }, { status: 409 });
+  }
+  if (result === "approved" && input.partner_id.trim() === "plumber_krause") {
+    after(() => callPlumber(id));
   }
   return Response.json({ ok: true });
 }
