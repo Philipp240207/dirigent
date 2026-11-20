@@ -1,4 +1,5 @@
 import type { getState } from "../../../lib/store"
+import { partnerName } from "../../../client/partners"
 
 type CaseEvent = ReturnType<typeof getState>["events"][number]
 const clock = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit" })
@@ -9,9 +10,8 @@ const costLabels = { voice_eur: "ElevenLabs voice", phone_eur: "Phone calls", op
 function recipientLabel(value: unknown) {
   if (value === "caretaker") return "Caretaker"
   if (value === "owner") return "Property owner"
-  if (value === "plumber_krause") return "Sanitär Krause"
   const unit = typeof value === "string" && /^t(\d)(\d)$/.exec(value)
-  return unit ? `Apartment ${unit[1]}.${unit[2]}` : typeof value === "string" ? value : "Recipient"
+  return unit ? `Apartment ${unit[1]}.${unit[2]}` : typeof value === "string" ? partnerName(value) : "Recipient"
 }
 
 export function LiveCaseActivity({ events }: { events: CaseEvent[] }) {

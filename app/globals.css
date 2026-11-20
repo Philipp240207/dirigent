@@ -560,3 +560,15 @@ summary:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
 .live-buildings li { padding-block: .4rem; break-inside: avoid; }
 .live-buildings small { display: block; color: var(--muted); }
 @media (max-width: 32rem) { .live-buildings { columns: 1; } }
+
+/* Live partner review cards and electrician connector */
+.partner-review + .partner-review { margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid #e2ddd2; }
+.live-connector { margin-block: 1rem; padding: 1rem; background: #fffdf8; border: 1px solid #e2ddd2; border-radius: 12px; }
+.live-connector h3 { margin: 0 0 .35rem; }
+.live-connector p { margin: .35rem 0; }
+.live-connector button { min-height: 44px; }
+.connector-checks { margin: .75rem 0 0; padding: 0; list-style: none; display: grid; gap: .35rem; }
+.connector-checks li { padding-left: 1.5rem; position: relative; overflow-wrap: anywhere; }
+.connector-checks li::before { content: "✓"; position: absolute; left: 0; color: #2f7d4f; font-weight: 700; }
+.connector-checks li[data-check="warn"]::before { content: "!"; color: #b25d1a; }
+.live-connector-status { margin-block: .8rem; font-weight: 600; }

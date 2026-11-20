@@ -3,6 +3,8 @@ import { Dashboard } from "./dashboard"
 import { buildings, scenarioBuilding } from "../../../client/buildings"
 import { demoReport } from "../../../client/state"
 
+export const metadata = { title: "Repair cases · Dirigent" }
+
 export default async function DashboardPage({
   searchParams,
 }: {
