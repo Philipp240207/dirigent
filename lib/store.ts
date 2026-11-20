@@ -295,7 +295,13 @@ export function updatePartnerJob(caseId: string, partnerId: string, update: Part
       case_id: caseId, kind: "message", actor: "dirigent",
       payload: {
         to,
-        text: scheduled ? `The ${partnerLabel} is scheduled for ${update.payload.slot}.` :
+        text: update.kind === "slot_confirmed"
+          ? plumberAppointment
+            ? to === building.parties.caretaker.id
+              ? `Bitte um ${update.payload.slot} vor Ort sein und ${[...unitIds].join(" und ")} für Sanitär Krause aufschließen.`
+              : `Der Installateur kommt um ${update.payload.slot}. Sie müssen nicht zu Hause sein, der Hausmeister schließt auf.`
+            : `The ${partnerLabel} is scheduled for ${update.payload.slot}.`
+          :
           `The ${partnerLabel} has completed work for unit ${demoCase.unit_id}.`,
       },
     });
