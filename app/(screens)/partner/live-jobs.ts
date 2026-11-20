@@ -9,8 +9,9 @@ export function releasedJobs() {
     const sent = history.findLast(event => event.kind === "partner_job" && event.payload.partner_id === "plumber_krause" && event.payload.status === "sent")
     if (!sent || !["dispatched", "scheduled", "resolved"].includes(item.status)) return []
     const shared = sent.payload.shared as Record<string, unknown> | undefined
-    const result = history.findLast(event => event.kind === "result")?.payload
-    const slot = history.findLast(event => event.kind === "slot_confirmed")?.payload.slot
+    const plumberUpdates = history.filter(event => event.payload.partner_id === "plumber_krause" || event.payload.partner_id == null)
+    const result = plumberUpdates.findLast(event => event.kind === "result")?.payload
+    const slot = plumberUpdates.findLast(event => event.kind === "slot_confirmed")?.payload.slot
     return [{
       id: item.id, unit: item.unit_id, status: item.status,
       address: typeof shared?.address === "string" ? shared.address : "",
