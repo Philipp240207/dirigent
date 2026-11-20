@@ -448,6 +448,7 @@
     "caretaker": {
       "id": "caretaker",
       "name": "Hausmeister Peter Wolf",
+      "phone": "+49 211 0815 2210",
       "language": "de",
       "has_keys": true,
       "available": "weekdays 8:00 to 17:00",
