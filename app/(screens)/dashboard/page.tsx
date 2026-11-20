@@ -8,8 +8,8 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ report?: string | string[]; building?: string | string[] }>
 }) {
-  const { report, building } = await searchParams
   if (process.env.NEXT_PUBLIC_MOCK !== "true") return <LiveDashboard />
+  const { report, building } = await searchParams
   const startFromReport = report === demoReport.case_id
   const initialBuildingId = startFromReport
     ? scenarioBuilding.id
