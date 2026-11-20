@@ -5,6 +5,8 @@ import { useEffect, useRef, useState } from "react"
 import type { getState } from "../../../lib/store"
 import { scenarioBuilding } from "../../../client/buildings"
 import { HomeLink } from "../home-link"
+import { LiveCaseActivity } from "./live-case-activity"
+import { LivePortfolio } from "./live-portfolio"
 import { LiveIncident } from "./live-incident"
 import { JobContext } from "./job-context"
 
@@ -38,6 +40,7 @@ export function LiveDashboard() {
   const [offline, setOffline] = useState(false)
   const [busy, setBusy] = useState("")
   const [error, setError] = useState("")
+  const [confirmReset, setConfirmReset] = useState(false)
   const [selectedCase, setSelectedCase] = useState("")
   const version = useRef(0)
   const sending = useRef(false)
@@ -80,7 +83,11 @@ export function LiveDashboard() {
         setError("Private access details must be removed from this proposal before sending.")
         return
       }
-      const result = await fetch(`/api/cases/${encodeURIComponent(caseId)}/approve`, { method: "POST" })
+      const result = await fetch(`/api/cases/${encodeURIComponent(caseId)}/approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ partner_id: "plumber_krause" }),
+      })
       if (!result.ok) throw new Error()
       const updated = await loadState()
       ++version.current
@@ -93,21 +100,54 @@ export function LiveDashboard() {
     }
   }
 
+  async function resetDemo() {
+    if (sending.current) return
+    sending.current = true
+    setBusy("reset")
+    setError("")
+    try {
+      const response = await fetch("/api/reset", { method: "POST" })
+      if (!response.ok) throw new Error()
+      const updated = await loadState()
+      ++version.current
+      setSelectedCase("")
+      setConfirmReset(false)
+      setState(updated)
+    } catch {
+      setError("Could not reset the demo. Check the current cases before retrying.")
+    } finally {
+      sending.current = false
+      setBusy("")
+    }
+  }
+
   const cases = state?.cases.toReversed().sort((a, b) => Number(b.status === "pending_approval") - Number(a.status === "pending_approval"))
   const displayed = cases?.some(item => item.id === selectedCase) ? selectedCase : cases?.[0]?.id
   return <main className="tracking-page">
     <header className="topbar"><HomeLink /><span className="mode">Property management</span></header>
-    <div className="heading"><div><h1>Repair cases</h1><p>{scenarioBuilding.address}</p></div></div>
+    <div className="heading"><div><h1>Repair cases</h1><p>{scenarioBuilding.address}</p></div>
+      {Boolean(cases?.length) && <button type="button" className="secondary" onClick={() => setConfirmReset(true)} disabled={Boolean(busy) || offline || confirmReset}>Reset demo</button>}
+    </div>
+    {confirmReset && <section className="reset-confirmation" aria-labelledby="reset-heading">
+      <h2 id="reset-heading">Reset the demo?</h2>
+      <p>This clears all cases and restarts the demo clock.</p>
+      <div className="photo-actions">
+        <button type="button" onClick={resetDemo} disabled={Boolean(busy) || offline}>Clear demo cases</button>
+        <button type="button" className="secondary" onClick={() => setConfirmReset(false)} disabled={Boolean(busy)}>Cancel</button>
+      </div>
+    </section>}
     {offline && <p role="alert">Connection interrupted. Reconnecting…</p>}
     {error && <p role="alert">{error}</p>}
     {!state && !offline && <p role="status">Loading cases…</p>}
+    {cases && <LivePortfolio cases={cases} caseId={displayed} />}
     {cases?.length === 0 && <p>No repairs reported.</p>}
     <div className="details">{cases?.map(item => {
       const proposal = latestProposal(state!, item.id)
       const fields = sharedFields(proposal?.payload.shared)
       const withheld = proposal?.payload.withheld
+      const events = state!.events.filter(event => event.case_id === item.id)
       const ready = item.status === "pending_approval" && proposal?.payload.status === "awaiting_approval"
-      return <section className="case-summary" key={item.id} data-status={item.status}>
+      return <section id={`case-${item.id}`} className="case-summary" key={item.id} data-status={item.status}>
         <h2>Water leak in apartment {item.unit_id}</h2>
         <p className="case-status" data-status={item.status}>{labels[item.status]}</p>
         {ready && proposal && <>
@@ -118,8 +158,9 @@ export function LiveDashboard() {
           <JobContext shared={fields} withheld={Array.isArray(withheld) ? withheld.filter((key): key is string => typeof key === "string") : []} sent={false} />
           <button className="case-action" disabled={Boolean(busy) || offline || containsPrivateAccess(fields)} onClick={() => approve(item.id, proposal.id)}>{busy === item.id ? "Sending…" : "Approve and send"}</button>
         </>}
-        {displayed === item.id ? <LiveIncident unit={item.unit_id} resolved={item.status === "resolved"} events={state!.events.filter(event => event.case_id === item.id)} />
+        {displayed === item.id ? <LiveIncident unit={item.unit_id} resolved={item.status === "resolved"} events={events} />
           : <button className="secondary" onClick={() => setSelectedCase(item.id)}>Show building and calls</button>}
+        {displayed === item.id && <LiveCaseActivity events={events} />}
         <details className="demo-views"><summary>Demo views</summary><div>
           <Link href={`/track/${item.id}`}>Resident tracking</Link>
           {["dispatched", "scheduled", "resolved"].includes(item.status) && <Link href={`/partner/${item.id}`}>Plumber job</Link>}

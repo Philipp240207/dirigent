@@ -15,7 +15,6 @@ export default async function PartnerPage({ params, searchParams }: { params: Pr
     const scheduled = job.status === "scheduled"
     const completed = job.status === "resolved"
     return <>
-      {!completed && <LiveRefresh />}
       <div className="heading management-heading"><div><h1>Water leak in apartment {job.unit}</h1><p>{job.address}</p></div></div>
       <section className="report-card">
         <h2>{completed ? "Work reported" : scheduled ? "Report your work" : "Confirm your visit"}</h2>
@@ -23,7 +22,9 @@ export default async function PartnerPage({ params, searchParams }: { params: Pr
         {job.caretaker && <p><strong>Access</strong> {job.caretaker}</p>}
         {job.slot && <p><strong>Appointment</strong> {job.slot}</p>}
         {completed ? <><p>{job.work}</p>{job.cost !== null && <p>Reported charge: €{job.cost}</p>}</>
-          : <WorkForm key={job.id + job.status} id={job.id} schedule={!scheduled} />}
+          : <WorkForm key={job.id + job.status} id={job.id} partnerId={partner} schedule={!scheduled}
+            agentId={process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_PARTNER?.trim()}
+            briefing={[job.scope, job.address, job.caretaker && `Access: ${job.caretaker}.`].filter(Boolean).join(" ")} />}
       </section>
     </>
   }

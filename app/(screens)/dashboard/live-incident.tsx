@@ -48,8 +48,14 @@ export function LiveIncident({ unit, resolved, events }: { unit: string; resolve
     return entry ? [{ ...entry, id: event.id, at: event.at }] : []
   }).reverse()
   const [latest, ...earlier] = calls
+  const water = events.findLast(event => event.kind === "water_status_confirmed")?.payload.status
+  const waterOff = water === "off"
+  const shutoffRequested = events.some(event => event.kind === "water_shutoff_requested")
   return <div className="live-incident">
-    <IncidentSection unitRisk={id => risks.get(id) ?? ""} reportedUnit={unit} showLegend riserActive={!resolved} />
+    <IncidentSection unitRisk={id => risks.get(id) ?? ""} reportedUnit={unit} showLegend riserActive={!resolved && !waterOff} />
+    {(waterOff || water === "restored" || (!resolved && shutoffRequested)) && <p className="live-water-status">
+      {waterOff ? "Water shut-off confirmed" : water === "restored" ? "Water supply restored" : "Caretaker asked to shut off the water"}
+    </p>}
     <div className="call-history">
       <h3>Resident calls</h3>
       {latest ? <>
