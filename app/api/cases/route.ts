@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { after } from "next/server";
 import building from "@/data/building.json";
+import { now } from "@/lib/clock";
 import { startResidentCall } from "@/lib/calls";
 import { buildLeakTimeline } from "@/lib/dirigent";
 import { saveNewCase, type DemoCase } from "@/lib/store";
@@ -24,10 +25,10 @@ export async function POST(request: Request) {
     type: "water_leak",
     unit_id: unit.id,
     status: "open",
-    created_at: new Date().toISOString(),
+    created_at: now().toISOString(),
   };
 
-  const { events, liveCalls } = buildLeakTimeline(demoCase, input.description);
+  const { events, residentCalls } = buildLeakTimeline(demoCase, input.description);
   saveNewCase({ ...demoCase, status: "pending_approval" }, [
     {
       case_id: demoCase.id,
@@ -43,9 +44,9 @@ export async function POST(request: Request) {
     ...events,
   ]);
 
-  if (liveCalls.length) {
+  if (residentCalls.length) {
     after(async () => {
-      await Promise.all(liveCalls.map(startResidentCall));
+      await Promise.all(residentCalls.map((call) => startResidentCall(call)));
     });
   }
 
