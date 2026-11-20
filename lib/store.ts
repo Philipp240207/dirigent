@@ -4,6 +4,7 @@ import { join } from "node:path";
 
 import building from "../data/building.json";
 import plumber from "../connectors/plumber_krause.json";
+import { now, resetClock } from "./clock";
 
 export type CaseStatus = "open" | "pending_approval" | "dispatched" | "scheduled" | "resolved";
 
@@ -31,7 +32,19 @@ type DemoState = {
 };
 
 const statePath = join(process.cwd(), "data", "state.json");
-const cache = globalThis as typeof globalThis & { dirigentState?: DemoState };
+const cache = globalThis as typeof globalThis & {
+  dirigentState?: DemoState;
+  dirigentRetryTimers?: Set<ReturnType<typeof setTimeout>>;
+};
+const retryTimers = cache.dirigentRetryTimers ??= new Set();
+
+export function scheduleRetry(delayMs: number, retry: () => void) {
+  const timer = setTimeout(() => {
+    retryTimers.delete(timer);
+    retry();
+  }, delayMs);
+  retryTimers.add(timer);
+}
 
 function initialState(): DemoState {
   return {
@@ -69,7 +82,7 @@ export function getState(): DemoState {
 }
 
 function stampEvent(input: NewEvent): DemoEvent {
-  return { ...structuredClone(input), id: randomUUID(), at: new Date().toISOString() };
+  return { ...structuredClone(input), id: randomUUID(), at: now().toISOString() };
 }
 
 export function addEvent(input: NewEvent): DemoEvent {
@@ -208,4 +221,7 @@ export function updatePlumberJob(caseId: string, update: PlumberUpdate) {
 
 export function reset() {
   saveState(initialState());
+  for (const timer of retryTimers) clearTimeout(timer);
+  retryTimers.clear();
+  resetClock();
 }
