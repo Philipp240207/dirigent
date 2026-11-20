@@ -14,7 +14,7 @@ export type DemoCase = {
   created_at: string;
 };
 
-type NewEvent = {
+export type NewEvent = {
   case_id: string | null;
   kind: string;
   actor: string;
@@ -72,6 +72,20 @@ export function addEvent(input: NewEvent): DemoEvent {
   const event = { ...structuredClone(input), id: randomUUID(), at: new Date().toISOString() };
   saveState({ ...state, events: [...state.events, event] });
   return structuredClone(event);
+}
+
+export function saveNewCase(demoCase: DemoCase, inputs: NewEvent[]) {
+  const state = currentState();
+  const events = inputs.map((input) => ({
+    ...structuredClone(input),
+    id: randomUUID(),
+    at: new Date().toISOString(),
+  }));
+  saveState({
+    ...state,
+    cases: [...state.cases, structuredClone(demoCase)],
+    events: [...state.events, ...events],
+  });
 }
 
 export function reset() {
