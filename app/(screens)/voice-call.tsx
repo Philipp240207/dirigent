@@ -8,6 +8,8 @@ type VoiceCallProps = {
   dynamicVariables: NonNullable<Parameters<ReturnType<typeof useConversation>["startSession"]>[0]>["dynamicVariables"]
   clientTools: UseConversationOptions["clientTools"]
   startLabel: string
+  /** Agent language code ("en", "de"); sent as overrides.agent.language. */
+  language?: string
   onDisconnect?: () => void
   onClosed?: () => void
 }
@@ -16,14 +18,14 @@ export function VoiceCall(props: VoiceCallProps) {
   return <ConversationProvider><VoiceControls {...props} /></ConversationProvider>
 }
 
-function VoiceControls({ agentId, dynamicVariables, clientTools, startLabel, onDisconnect, onClosed }: VoiceCallProps) {
+function VoiceControls({ agentId, dynamicVariables, clientTools, startLabel, language, onDisconnect, onClosed }: VoiceCallProps) {
   const [error, setError] = useState("")
   const conversation = useConversation({
     onError: () => setError("The call could not continue. Check microphone access and try again."),
     clientTools,
     onDisconnect,
   })
-  const idle = conversation.status === "disconnected"
+  const idle = conversation.status !== "connected" && conversation.status !== "connecting"
   const connecting = conversation.status === "connecting"
 
   function startCall() {
@@ -36,6 +38,7 @@ function VoiceControls({ agentId, dynamicVariables, clientTools, startLabel, onD
       agentId,
       connectionType: "webrtc",
       dynamicVariables,
+      ...(language ? { overrides: { agent: { language: language as never } } } : {}),
     })
   }
 

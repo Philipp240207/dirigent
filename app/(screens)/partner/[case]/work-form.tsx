@@ -2,14 +2,11 @@
 
 import { type FormEvent, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { VoiceCall } from "../../voice-call"
 
-export function WorkForm({ id, partnerId, schedule, agentId, briefing }: {
+export function WorkForm({ id, partnerId, schedule }: {
   id: string
   partnerId: string
   schedule: boolean
-  agentId?: string
-  briefing: string
 }) {
   const router = useRouter()
   const lock = useRef(false)
@@ -58,23 +55,5 @@ export function WorkForm({ id, partnerId, schedule, agentId, briefing }: {
     {error && <p role="alert">{error}</p>}
     <button className="partner-action" disabled={busy}>{busy ? "Saving…" : schedule ? "Confirm appointment" : "Report completion"}</button>
   </form>
-  {agentId && <VoiceCall agentId={agentId} onDisconnect={() => router.refresh()} startLabel={schedule ? "Discuss appointment by voice" : "Report completion by voice"}
-    dynamicVariables={{ case_id: id, mode: schedule ? "dispatch" : "report", briefing }}
-    clientTools={schedule ? {
-      confirm_slot: async ({ slot }) => {
-        if (typeof slot !== "string" || !slot.trim()) throw new Error("A visit time is required.")
-        await save({ slot })
-        return JSON.stringify({ ok: true })
-      },
-    } : {
-      report_result: async ({ cost_eur, work_description }) => {
-        if (typeof cost_eur !== "number" || !Number.isFinite(cost_eur) || cost_eur < 0 ||
-            typeof work_description !== "string" || !work_description.trim()) {
-          throw new Error("Work and cost are required.")
-        }
-        await save({ cost_eur, work_description })
-        return JSON.stringify({ ok: true })
-      },
-    }} />}
   </>
 }
