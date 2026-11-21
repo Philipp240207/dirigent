@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import { after } from "next/server";
 import building from "@/data/building.json";
 import { now } from "@/lib/clock";
-import { startResidentCall } from "@/lib/calls";
 import { buildLeakTimeline } from "@/lib/dirigent";
 import { saveLeakTimeline, saveNewCase, type DemoCase } from "@/lib/store";
 
@@ -41,12 +40,12 @@ export async function POST(request: Request) {
         description,
       },
     },
+    { case_id: demoCase.id, kind: "affected", actor: "dirigent", payload: { unit_id: unit.id, risk: "confirmed" } },
   ]);
 
-  after(async () => {
-    const { events, residentCalls } = buildLeakTimeline(demoCase, description);
-    if (!saveLeakTimeline(demoCase.id, events)) return;
-    await Promise.all(residentCalls.map((call) => startResidentCall(call)));
+  after(() => {
+    const { events } = buildLeakTimeline(demoCase, description);
+    saveLeakTimeline(demoCase.id, events);
   });
 
   return Response.json({ case_id: demoCase.id });
