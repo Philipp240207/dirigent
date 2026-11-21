@@ -11,7 +11,6 @@ import { LiveIncident, incidentRisks, type WaterStatus } from "./live-incident"
 import { BuildingSection, IncidentSection, riskStyles } from "./building-section"
 import { PortfolioMap, type MapState } from "./portfolio-map"
 import { JobContext } from "./job-context"
-import { LiveConnector } from "./live-connector"
 import { partnerName } from "../../../client/partners"
 
 type State = ReturnType<typeof getState>
@@ -25,12 +24,11 @@ const navPaths = {
   Activity: "M2 13h4l3-8 4 14 3-8 2 2h4",
   Outbox: "M3 13l3-8h12l3 8v6H3zm0 0h5l1 3h6l1-3h5",
   Chevron: "m9 5 7 7-7 7",
-  Connectors: "m9 8 4-4a4 4 0 0 1 6 6l-3 3m-1 3-4 4a4 4 0 0 1-6-6l3-3m1 3 6-6",
 }
 function NavIcon({ name }: { name: keyof typeof navPaths }) {
   return <svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d={navPaths[name]} /></svg>
 }
-const overviewTitles = { tasks: "Tasks", portfolio: "Portfolio", activity: "Activity", outbox: "Outbox", connectors: "Connectors" }
+const overviewTitles = { tasks: "Tasks", portfolio: "Portfolio", activity: "Activity", outbox: "Outbox" }
 type Overview = keyof typeof overviewTitles
 const approvalTarget = "approval-panel"
 const recentActivityLimit = 5
@@ -403,7 +401,6 @@ export function LiveDashboard() {
         <div className="management-utilities">
           <button type="button" aria-pressed={overview === "activity" && !selectedBuilding} onClick={() => openOverview("activity")}><NavIcon name="Activity" />Activity</button>
           <button type="button" aria-pressed={overview === "outbox" && !selectedBuilding} onClick={() => openOverview("outbox")}><NavIcon name="Outbox" />Outbox</button>
-          <button type="button" aria-pressed={overview === "connectors" && !selectedBuilding} onClick={() => openOverview("connectors")}><NavIcon name="Connectors" />Connectors</button>
         </div>
       </header>
       {statusBanner}
@@ -497,22 +494,6 @@ export function LiveDashboard() {
                   ))}
                 </ul>
               ) : <p>No messages yet.</p>}
-            </section>
-          )}
-          {overview === "connectors" && (
-            <section className="workspace-feed" aria-label="Connectors">
-              <ul className="outbox-list">
-                {(state?.connectors ?? []).map(connector => (
-                  <li key={connector.partner_id}>
-                    <div className="outbox-heading"><strong>{partnerName(connector.partner_id)}</strong><span>{connector.active ? "Active" : "Inactive"}</span></div>
-                    <p className="outbox-body">Role: {connector.role}</p>
-                  </li>
-                ))}
-              </ul>
-              {current && current.status !== "resolved"
-                ? <LiveConnector caseId={current.id} events={events} connectors={state!.connectors} disabled={Boolean(busy) || offline} onChanged={refresh} />
-                : null}
-              <p>A new partner is connected from an open case once the photo shows that it is needed.</p>
             </section>
           )}
         </>
@@ -614,7 +595,6 @@ export function LiveDashboard() {
                       })}
                     </section>
                   )}
-                  {current.status !== "resolved" && <LiveConnector caseId={current.id} events={events} connectors={state!.connectors} disabled={Boolean(busy) || offline} onChanged={refresh} />}
                   <LiveCaseActivity events={events} />
                 </>}
               </div>

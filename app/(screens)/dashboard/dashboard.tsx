@@ -4,13 +4,11 @@ import { HomeLink } from "../home-link"
 import Link from "next/link"
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
 import { buildings, buildingPortrait, buildingUnits, scenarioBuilding } from "../../../client/buildings"
-import { advanceDemo, demoConnectorActivation, demoConnectorDraft, demoConnectorEnd, demoEnd, demoJob, demoMoveIn, demoReport, demoResult, demoSlot, emptyDemoSession, readConnectorDemo, readDemo, readDemoSession, readExampleJobs, subscribeDemoSession, writeDemoSession } from "../../../client/state"
+import { advanceDemo, demoEnd, demoJob, demoReport, demoResult, demoSlot, emptyDemoSession, readDemo, readDemoSession, readExampleJobs, subscribeDemoSession, writeDemoSession } from "../../../client/state"
 
 import { jobs, jobStatus } from "../partner/jobs"
 import electric from "../../../fixtures/electrician-demo.json"
-import { ElectricianConnector } from "./electrician-connector"
 import { advanceElectrician, readElectrician, electricianDispatched, prepareElectricianReview, readReplayTime, saveReplayTime } from "../../../client/state"
-import { ConnectorDemo } from "./connector-demo"
 import { JobContext } from "./job-context"
 import { PortfolioMap, type MapState } from "./portfolio-map"
 
@@ -29,7 +27,6 @@ const recipients: Record<string, string> = {
   t11: "Apartment 1.1",
   caretaker: "Caretaker Peter Wolf",
   t31: "Apartment 3.1",
-  t42n: "Lucas Laurent",
   owner: "Property owner",
 }
 
@@ -41,14 +38,13 @@ const navPaths = {
   Activity: "M2 13h4l3-8 4 14 3-8 2 2h4",
   Outbox: "M3 13l3-8h12l3 8v6H3zm0 0h5l1 3h6l1-3h5",
   Chevron: "m9 5 7 7-7 7",
-  Connectors: "m9 8 4-4a4 4 0 0 1 6 6l-3 3m-1 3-4 4a4 4 0 0 1-6-6l3-3m1 3 6-6",
 }
 
 function NavIcon({ name }: { name: keyof typeof navPaths }) {
   return <svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d={navPaths[name]} /></svg>
 }
 
-const overviewTitles = { tasks: "Tasks", portfolio: "Portfolio", activity: "Activity", outbox: "Outbox", connectors: "Connectors" }
+const overviewTitles = { tasks: "Tasks", portfolio: "Portfolio", activity: "Activity", outbox: "Outbox" }
 const recentActivityLimit = 5
 const exampleCases = jobs.filter((job) => job.example)
 const euro = new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR" })
@@ -94,12 +90,6 @@ function activityEntry(event: DemoEvent) {
       return { title: "Job approved by property manager" }
     case "partner_job":
       return { title: "Job sent to Sanitär Krause" }
-    case "connector_drafted":
-      return { title: "RheinNet connector drafted" }
-    case "connector_activated":
-      return { title: "RheinNet connector activated" }
-    case "order":
-      return { title: "RheinNet order prepared" }
     case "slot_confirmed":
       return { title: "Appointment confirmed", detail: payload.slot }
     case "maintenance_log":
@@ -119,8 +109,6 @@ export function Dashboard({ startFromReport, initialBuildingId }: { startFromRep
   const selectedBuilding = buildings.find((building) => building.id === selectedId)
   const [elapsed, setElapsed] = useState(startFromReport ? 0 : -1)
   const [reviewingElectric, setReviewingElectric] = useState(false)
-  const [connectorTime, setConnectorTime] = useState(-1)
-  const [connectorText, setConnectorText] = useState("")
   const session = useSyncExternalStore(subscribeDemoSession, readDemoSession, emptyDemoSession)
   const examples = useSyncExternalStore(subscribeDemoSession, readExampleJobs, emptyDemoSession)
   const electrician = useSyncExternalStore(subscribeDemoSession, readElectrician, emptyDemoSession)
@@ -133,9 +121,7 @@ export function Dashboard({ startFromReport, initialBuildingId }: { startFromRep
   const [showFullActivity, setShowFullActivity] = useState(false)
   const leakReplay = readDemo(currentTime, approved)
   const leakEvents = leakReplay.filter((event) => event.case_id === demoReport.case_id)
-  const events = [...leakReplay, ...readConnectorDemo(connectorTime)]
-    .sort((a, b) => a.at_s - b.at_s)
-  const connectorPlaying = connectorTime >= demoMoveIn.at_s && connectorTime < demoConnectorEnd
+  const events = leakReplay
   const plumberStatus = leakEvents.findLast((event) => event.kind === "status_change")?.payload.status ?? "open"
   const electricalDamage = leakEvents.some(event => event.kind === "photo" && event.payload.assessment?.electrics)
   const electricNeeded = electricalDamage && electrician !== "reported"
@@ -166,7 +152,7 @@ export function Dashboard({ startFromReport, initialBuildingId }: { startFromRep
   }).reverse()
   const visibleActivity = showFullActivity ? activity : activity.slice(0, recentActivityLimit)
   const olderActivityCount = Math.max(0, activity.length - recentActivityLimit)
-  const outbox = events.filter((event) => event.kind === "message" || event.kind === "order")
+  const outbox = events.filter((event) => event.kind === "message")
 
   useEffect(() => {
     const savedTime = readReplayTime()
@@ -191,12 +177,6 @@ export function Dashboard({ startFromReport, initialBuildingId }: { startFromRep
       setElapsed((previous) => Math.max(previous, session === "approved" ? demoJob.at_s - 1 : demoJob.at_s))
     }
   }, [session, electricPending, electricSent])
-
-  useEffect(() => {
-    if (!connectorPlaying) return
-    const timer = window.setTimeout(() => setConnectorTime(connectorTime + 1), 1000)
-    return () => window.clearTimeout(timer)
-  }, [connectorPlaying, connectorTime])
 
   useEffect(() => {
     if (!target) return
@@ -278,7 +258,6 @@ export function Dashboard({ startFromReport, initialBuildingId }: { startFromRep
         <div className="management-utilities">
           <button type="button" aria-pressed={overview === "activity" && !selectedBuilding} onClick={() => openOverview("activity")}><NavIcon name="Activity" />Activity</button>
           <button type="button" aria-pressed={overview === "outbox" && !selectedBuilding} onClick={() => openOverview("outbox")}><NavIcon name="Outbox" />Outbox</button>
-          <button type="button" aria-pressed={overview === "connectors" && !selectedBuilding} onClick={() => openOverview("connectors")}><NavIcon name="Connectors" />Connectors</button>
 
         </div>
       </header>
@@ -337,7 +316,7 @@ export function Dashboard({ startFromReport, initialBuildingId }: { startFromRep
           )}
           {overview === "activity" && (
             <section className="workspace-feed" aria-label="Event history">
-              {(scenarioStarted && status !== "resolved" || connectorTime >= demoMoveIn.at_s && connectorTime < demoConnectorEnd) && (
+              {scenarioStarted && status !== "resolved" && (
                 <button className="activity-property" onClick={() => openBuilding(scenarioBuilding.id)}>
                   <img src={buildingPortrait(scenarioBuilding)} alt="" width="44" height="48" />
                   {scenarioBuilding.address}<NavIcon name="Chevron" />
@@ -373,45 +352,21 @@ export function Dashboard({ startFromReport, initialBuildingId }: { startFromRep
             <section className="workspace-feed" aria-label="Outgoing messages">
               {outbox.length ? (
                 <ul className="outbox-list">
-                  {[...outbox].reverse().map(({ id, at_s: at, kind, payload }) => {
-                    const order = kind === "order"
-                    const recipient = order
-                      ? payload.partner_id === "isp_rheinnet" ? "RheinNet Glasfaser" : payload.partner_id
-                      : recipients[payload.to ?? ""] ?? payload.to
+                  {[...outbox].reverse().map(({ id, at_s: at, payload }) => {
+                    const recipient = recipients[payload.to ?? ""] ?? payload.to
                     return (
                       <li key={id}>
                         <div className="outbox-heading">
                           <strong>{recipient}</strong>
                           <DemoEventTime seconds={at} />
                         </div>
-                        {order ? (
-                          <details>
-                            <summary>Service order</summary>
-                            <dl>
-                              {Object.entries(payload.fields ?? {}).map(([field, value]) => (
-                                <div key={field}><dt>{field.replaceAll("_", " ")}</dt><dd>{String(value)}</dd></div>
-                              ))}
-                            </dl>
-                          </details>
-                        ) : <p className="outbox-body">{payload.text}</p>}
+                        <p className="outbox-body">{payload.text}</p>
                       </li>
                     )
                   })}
                 </ul>
               ) : <p>No messages yet.</p>}
             </section>
-          )}
-          {overview === "connectors" && (
-            <>
-            <ElectricianConnector step={electrician} canActivate={electricNeeded} onReview={() => { setReviewingElectric(true); openBuilding(scenarioBuilding.id, approvalTarget) }} />
-            <details className="building-disclosure"><summary>RheinNet move-in demo</summary>
-            <ConnectorDemo elapsed={connectorTime} text={connectorText} onTextChange={setConnectorText}
-              onDraft={() => setConnectorTime(demoConnectorDraft.at_s)}
-              onActivate={() => setConnectorTime(demoConnectorActivation.at_s)}
-              onMoveIn={() => setConnectorTime(demoMoveIn.at_s)}
-              onOutbox={() => openOverview("outbox")} />
-            </details>
-            </>
           )}
         </>
       ) : (
@@ -541,12 +496,10 @@ export function Dashboard({ startFromReport, initialBuildingId }: { startFromRep
         <div><Link href="/tenant/3.1">Resident report</Link><Link href="/partner">Plumber jobs</Link>
           {scenarioStarted && <Link href="/track/c1">Resident tracking</Link>}
           {electricSent && <Link href="/partner/c1?partner=electrician_schmitz">Electrician job</Link>}
-          {(elapsed >= 0 || connectorTime >= 0) && (
+          {elapsed >= 0 && (
               <button className="building-reset" type="button" onClick={() => {
                 setReviewingElectric(false)
                 setElapsed(-1)
-                setConnectorTime(-1)
-                setConnectorText("")
                 writeDemoSession("")
                 setShowFullActivity(false)
               }}>Reset demo</button>
