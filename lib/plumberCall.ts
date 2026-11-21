@@ -58,6 +58,8 @@ export async function startPartnerCall(caseId: string, partnerId: string, mode: 
     if (!call.success || !call.conversation_id) throw new Error("Missing conversation ID");
     note(`Outbound ${mode} call started for the plumber.`);
 
+    // After "done" the analysis can arrive a few seconds later: keep polling up to ~30 s for it.
+    let waitsAfterDone = 0;
     for (let poll = 0; poll < 36; poll++) {
       await sleep(5_000);
       if (!getState().cases.some(({ id }) => id === caseId)) return;
@@ -68,24 +70,33 @@ export async function startPartnerCall(caseId: string, partnerId: string, mode: 
       if (!result.ok) throw new Error("Conversation lookup failed");
       const conversation = await result.json() as {
         status?: string;
-        analysis?: { data_collection_results?: Record<string, { value?: unknown }> };
+        analysis?: { data_collection_results?: Record<string, { name?: unknown; value?: unknown }> };
       };
       if (conversation.status === "failed") break;
       if (conversation.status !== "done") continue;
       const collected = conversation.analysis?.data_collection_results;
-      const slot = collected?.slot?.value;
+      // ElevenLabs keys the results by item ID (aitem_…); the field name is in entry.name.
+      const field = (name: string) => Object.values(collected ?? {}).find((entry) => entry?.name === name)?.value ??
+        collected?.[name]?.value;
+      const slot = field("slot");
       if (mode === "dispatch" && typeof slot === "string" && slot.trim() &&
           proposePartnerSlot(caseId, partnerId, slot) === "ok") return;
 
-      const costValue = collected?.cost_eur?.value;
+      const costValue = field("cost_eur");
       const cost = typeof costValue === "string" && /^\d+(?:[.,]\d{1,2})?$/.test(costValue.trim())
         ? Number(costValue.trim().replace(",", ".")) : costValue;
-      const work = collected?.work_description?.value;
+      const work = field("work_description");
       if (mode === "report" && typeof work === "string" && work.trim() &&
           typeof cost === "number" && Number.isFinite(cost) && cost >= 0 &&
           updatePartnerJob(caseId, partnerId, {
             kind: "result", payload: { cost_eur: cost, work_description: work.trim() },
           }) === "ok") return;
+      const missing = mode === "dispatch" ? !(typeof slot === "string" && slot.trim())
+        : !(typeof work === "string" && work.trim()) || costValue === undefined || costValue === null;
+      if (missing && waitsAfterDone < 6) {
+        waitsAfterDone++;
+        continue;
+      }
       break;
     }
     note("The plumber call did not save a confirmed update. Use the partner page to enter it manually.");
