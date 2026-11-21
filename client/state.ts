@@ -4,23 +4,15 @@ const demoEvents = fixture.events
 export const demoReport = demoEvents.find((event) => event.kind === "case_created" && event.payload.type === "water_leak")!
 const approvalGate = demoEvents.findIndex((event) => event.pause_until_approved)
 const approvalTime = demoEvents[approvalGate].at_s
+// The replay stops before the (removed) move-in connector demo that follows in the fixture.
 const connectorStart = demoEvents.findIndex((event) => event.kind === "connector_drafted")
-const leakEvents = demoEvents.slice(0, connectorStart)
-const connectorEvents = demoEvents.slice(connectorStart)
+const leakEvents = connectorStart === -1 ? demoEvents : demoEvents.slice(0, connectorStart)
 export const demoEnd = leakEvents[leakEvents.length - 1].at_s
-export const demoConnectorEnd = connectorEvents[connectorEvents.length - 1].at_s
-export const demoConnectorDraft = connectorEvents.find((event) => event.kind === "connector_drafted")!
-export const demoConnectorActivation = connectorEvents.find((event) => event.kind === "connector_activated")!
-export const demoMoveIn = connectorEvents.find((event) => event.kind === "case_created")!
 
 export function readDemo(elapsed: number, approved: boolean) {
   return leakEvents.filter((event, index) =>
     event.at_s <= elapsed && (approved || index <= approvalGate),
   )
-}
-
-export function readConnectorDemo(elapsed: number) {
-  return connectorEvents.filter((event) => event.at_s <= elapsed)
 }
 
 export function advanceDemo(elapsed: number, approved: boolean) {
