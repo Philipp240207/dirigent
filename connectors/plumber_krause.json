@@ -26,9 +26,9 @@
     ]
   },
   "conversation": {
-    "channel": "browser",
+    "channel": "phone",
     "agent": "partner_call",
-    "language": "de",
+    "language": "en",
     "goal": "confirm the earliest slot that fits the affected tenants, get a cost estimate"
   },
   "close_loop": {
