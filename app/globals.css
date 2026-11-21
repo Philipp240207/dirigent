@@ -603,3 +603,10 @@ summary:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
 
 /* Partner page while the server calls the plumber's phone */
 .phone-dispatch .incoming-caller { font-size: 1.1rem; }
+
+/* Open water leak: red badge in the building list, pulsing ring around the reported flat */
+.case-status[data-status="alert"] { color: #9b1c14; background: #ffe3e0; }
+@media (prefers-reduced-motion: no-preference) {
+  .reported-ring { animation: reported-ring 1.8s ease-in-out infinite; }
+}
+@keyframes reported-ring { 50% { stroke-opacity: .35; } }

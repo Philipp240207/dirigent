@@ -16,7 +16,7 @@ export const riskStyles: Record<string, { label: string; color: string }> = {
   confirmed: { label: "Reported or confirmed", color: "#ff3b30" },
   high: { label: "High risk", color: "#ff9500" },
   source: { label: "Possible source", color: "#ffcc00" },
-  check: { label: "Inspection needed", color: "#858b8a" },
+  check: { label: "Possible damage, check", color: "#e0b000" },
   clear: { label: "Clear", color: "#34c759" },
 }
 
@@ -54,10 +54,15 @@ export function IncidentSection({ unitRisk, reportedUnit, riserActive, showLegen
           const style = riskStyles[risk]
           if (!style) return null
           return <rect key={unit} data-unit={unit} data-risk={risk} {...room} height={unit === "cellar" ? 81 : 73} rx="2"
-            fill={risk === "check" ? "none" : style.color} fillOpacity=".26" stroke={style.color} strokeWidth="2.5">
+            fill={style.color} fillOpacity={risk === "check" ? ".14" : ".26"} stroke={style.color} strokeWidth="2.5">
             <title>{unit === "cellar" ? "Cellar" : `Apartment ${unit}`} · {style.label}</title>
           </rect>
         })}
+        {rooms[reportedUnit] && riskStyles[unitRisk(reportedUnit)] && (
+          // The reported flat is circled in red.
+          <rect className="reported-ring" aria-hidden="true" x={rooms[reportedUnit].x - 7} y={rooms[reportedUnit].y - 7}
+            width={rooms[reportedUnit].width + 14} height={87} rx="12" fill="none" stroke="#ff3b30" strokeWidth="4" />
+        )}
         {riserActive && (
           <g className="active-riser" aria-hidden="true">
             <path d={`M${pipeX} ${pipeY} V508`} />
@@ -68,7 +73,7 @@ export function IncidentSection({ unitRisk, reportedUnit, riserActive, showLegen
     </div>
     {showLegend && <ul className="building-legend" aria-label="Building status legend">
       {Object.entries(riskStyles).map(([risk, style]) => (
-        <li key={risk}><span style={{ background: risk === "check" ? "transparent" : style.color, border: `2px solid ${style.color}` }} />{style.label}</li>
+        <li key={risk}><span style={{ background: style.color, border: `2px solid ${style.color}`, opacity: risk === "check" ? .55 : 1 }} />{style.label}</li>
       ))}
     </ul>}
     <details className="building-disclosure">
