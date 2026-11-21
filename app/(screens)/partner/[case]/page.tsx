@@ -49,7 +49,7 @@ export default async function PartnerPage({ params, searchParams }: { params: Pr
         {job.photo && <img className="job-photo" src={job.photo} alt={`Damage photo from apartment ${job.unit}`} />}
         <dl>
           <div><dt>Address</dt><dd>{job.address}</dd></div>
-          <div><dt>Apartment</dt><dd>{job.unit}{job.confirmedUnits.length > 1 && <>, also {job.confirmedUnits.filter(unit => unit !== job.unit).join(", ")}</>}</dd></div>
+          <div><dt>{job.confirmedUnits.length > 1 ? "Apartments" : "Apartment"}</dt><dd>{[job.unit, ...job.confirmedUnits.filter(unit => unit !== job.unit)].join(" and ")}</dd></div>
           {job.scope && <div><dt>Problem</dt><dd>{job.scope}</dd></div>}
           {job.assessment && <div><dt>Photo assessment</dt><dd>{job.assessment}</dd></div>}
           {job.caretaker && <div><dt>Caretaker</dt><dd>{job.caretaker}</dd></div>}

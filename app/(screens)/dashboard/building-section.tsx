@@ -58,7 +58,7 @@ export function IncidentSection({ unitRisk, reportedUnit, riserActive, showLegen
             <title>{unit === "cellar" ? "Cellar" : `Apartment ${unit}`} · {style.label}</title>
           </rect>
         })}
-        {rooms[reportedUnit] && riskStyles[unitRisk(reportedUnit)] && (
+        {rooms[reportedUnit] && riskStyles[unitRisk(reportedUnit)] && unitRisk(reportedUnit) !== "clear" && (
           // The reported flat is circled in red.
           <rect className="reported-ring" aria-hidden="true" x={rooms[reportedUnit].x - 7} y={rooms[reportedUnit].y - 7}
             width={rooms[reportedUnit].width + 14} height={87} rx="12" fill="none" stroke="#ff3b30" strokeWidth="4" />

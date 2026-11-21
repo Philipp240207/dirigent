@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import type { getState } from "../../../lib/store"
 import { buildings, buildingPortrait, buildingUnits, scenarioBuilding } from "../../../client/buildings"
 import { HomeLink } from "../home-link"
@@ -160,6 +161,8 @@ function containsPrivateAccess(fields: ReturnType<typeof sharedFields>) {
 }
 
 export function LiveDashboard() {
+  // Each role has its own address; links to the other roles and the reset only with ?demo=1.
+  const demo = useSearchParams().get("demo") === "1"
   const [state, setState] = useState<State | null>(null)
   const [offline, setOffline] = useState(false)
   const [busy, setBusy] = useState("")
@@ -356,14 +359,15 @@ export function LiveDashboard() {
   ).map(building => {
     const isScenario = building.id === scenarioBuilding.id && Boolean(current)
     const needsApproval = isScenario && pendingCount > 0
-    // An open water leak shows red on the map and in the list until the visit is scheduled.
+    // Open red, awaiting approval orange, visit scheduled blue, resolved green.
     const state: MapState = !isScenario ? "clear"
-      : status === "resolved" ? "completed" : status === "scheduled" ? "scheduled" : "attention"
+      : status === "resolved" ? "completed" : status === "scheduled" ? "scheduled"
+      : status === "pending_approval" ? "approval" : "attention"
     const label = isScenario && status
-      ? state === "attention" ? `Water damage · ${labels[status as keyof typeof labels]}` : labels[status as keyof typeof labels]
+      ? state === "attention" || state === "approval" ? `Water damage · ${labels[status as keyof typeof labels]}` : labels[status as keyof typeof labels]
       : "No open cases"
     return { building, status: label, state, needsApproval }
-  }).sort((a, b) => Number(b.state === "attention") - Number(a.state === "attention"))
+  }).sort((a, b) => Number(b.state !== "clear") - Number(a.state !== "clear"))
   const apartmentCount = buildings.reduce((count, building) => count + buildingUnits(building).length, 0)
 
   function openOverview(view: Overview) {
@@ -443,7 +447,7 @@ export function LiveDashboard() {
                         <span className="property-data">
                           <strong>{building.address}</strong>
                           <small>{building.city} · {buildingUnits(building).length} apartments</small>
-                          <span className="case-status" data-status={mapState === "completed" ? "resolved" : mapState === "clear" ? "idle" : mapState === "attention" ? "alert" : "open"}>{label}</span>
+                          <span className="case-status" data-status={mapState === "completed" ? "resolved" : mapState === "clear" ? "idle" : mapState === "attention" ? "alert" : mapState === "approval" ? "pending_approval" : "scheduled"}>{label}</span>
                         </span>
                         <span className="row-action"><span>{needsApproval ? "Review job" : mapState === "scheduled" ? "View appointment" : "View building"}</span> <NavIcon name="Chevron" /></span>
                       </button>
@@ -573,7 +577,7 @@ export function LiveDashboard() {
                                 ? <p role="alert">The phone call to <strong>{name}</strong> did not confirm a visit. Open their page to enter it.</p>
                                 : <p><strong>Calling {partnerId === "plumber_krause" ? "plumber" : name}…</strong> {name}{onPhone ? " is being called on the phone" : " is asked"} to agree on a visit.</p>
                             })()}
-                            <Link className="case-action partner-call-link" href={`/partner/${current.id}?partner=${encodeURIComponent(partnerId)}`}>Open {name}’s phone</Link>
+                            {demo && <Link className="case-action partner-call-link" href={`/partner/${current.id}?partner=${encodeURIComponent(partnerId)}`}>Open {name}’s page</Link>}
                           </>}
                       </div>
                     })}
@@ -636,7 +640,7 @@ export function LiveDashboard() {
           )}
         </>
       )}
-      <details className="demo-views">
+      {demo && <details className="demo-views">
         <summary>Demo views</summary>
         <div>
           <Link href="/tenant/3.1">Resident report</Link>
@@ -652,7 +656,7 @@ export function LiveDashboard() {
             <button type="button" className="secondary" onClick={() => setConfirmReset(false)} disabled={Boolean(busy)}>Cancel</button>
           </div>
         </section>}
-      </details>
+      </details>}
     </main>
   )
 }
