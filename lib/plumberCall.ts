@@ -75,7 +75,7 @@ export async function startPartnerCall(caseId: string, partnerId: string, mode: 
       const collected = conversation.analysis?.data_collection_results;
       const slot = collected?.slot?.value;
       if (mode === "dispatch" && typeof slot === "string" && slot.trim() &&
-          proposePartnerSlot(caseId, partnerId, slot.trim()) === "ok") return;
+          proposePartnerSlot(caseId, partnerId, slot) === "ok") return;
 
       const costValue = collected?.cost_eur?.value;
       const cost = typeof costValue === "string" && /^\d+(?:[.,]\d{1,2})?$/.test(costValue.trim())
