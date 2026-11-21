@@ -163,7 +163,8 @@ export function LiveDashboard() {
   const [busy, setBusy] = useState("")
   const [error, setError] = useState("")
   const [confirmReset, setConfirmReset] = useState(false)
-  const [overview, setOverview] = useState<Overview>("tasks")
+  // Start on the portfolio so the map shows the building light up when a report comes in.
+  const [overview, setOverview] = useState<Overview>("portfolio")
   const [selectedId, setSelectedId] = useState("")
   const [query, setQuery] = useState("")
   const [showFullActivity, setShowFullActivity] = useState(false)
@@ -307,9 +308,12 @@ export function LiveDashboard() {
   ).map(building => {
     const isScenario = building.id === scenarioBuilding.id && Boolean(current)
     const needsApproval = isScenario && pendingCount > 0
-    const state: MapState = !isScenario ? "clear" : needsApproval ? "approval"
+    // An open water leak shows red on the map and in the list until the visit is scheduled.
+    const state: MapState = !isScenario ? "clear"
       : status === "resolved" ? "completed" : status === "scheduled" ? "scheduled" : "attention"
-    const label = isScenario && status ? labels[status as keyof typeof labels] : "No open cases"
+    const label = isScenario && status
+      ? state === "attention" ? `Water damage · ${labels[status as keyof typeof labels]}` : labels[status as keyof typeof labels]
+      : "No open cases"
     return { building, status: label, state, needsApproval }
   })
   const apartmentCount = buildings.reduce((count, building) => count + buildingUnits(building).length, 0)
@@ -391,7 +395,7 @@ export function LiveDashboard() {
                         <span className="property-data">
                           <strong>{building.address}</strong>
                           <small>{building.city} · {buildingUnits(building).length} apartments</small>
-                          <span className="case-status" data-status={needsApproval ? "pending_approval" : mapState === "completed" ? "resolved" : mapState === "clear" ? "idle" : "open"}>{label}</span>
+                          <span className="case-status" data-status={mapState === "completed" ? "resolved" : mapState === "clear" ? "idle" : mapState === "attention" ? "alert" : "open"}>{label}</span>
                         </span>
                         <span className="row-action"><span>{needsApproval ? "Review job" : mapState === "scheduled" ? "View appointment" : "View building"}</span> <NavIcon name="Chevron" /></span>
                       </button>
