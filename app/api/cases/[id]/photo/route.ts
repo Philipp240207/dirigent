@@ -1,3 +1,6 @@
+import { after } from "next/server";
+import { startResidentCall } from "@/lib/calls";
+import { buildLeakTimeline } from "@/lib/dirigent";
 import { randomUUID } from "node:crypto";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -54,6 +57,21 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     rmSync(path, { force: true });
     throw error;
   }
+
+  after(async () => {
+    const { cases, events } = getState();
+    const item = cases.find((entry) => entry.id === id && entry.status !== "resolved");
+    if (!item) return;
+    const description = events.find((event) => event.case_id === id && event.kind === "case_created")?.payload.description;
+    if (typeof description !== "string") return;
+    const { residentCalls } = buildLeakTimeline(item, description);
+    await Promise.all(residentCalls.map(async (call) => {
+      if (getState().events.some((event) => event.case_id === id && event.kind === "affected" &&
+        event.payload.unit_id === call.unitId && event.payload.risk === "high")) return;
+      addEvent({ case_id: id, kind: "affected", actor: "dirigent", payload: { unit_id: call.unitId, risk: "high" } });
+      await startResidentCall(call);
+    }));
+  });
 
   return Response.json({ url, assessment });
 }

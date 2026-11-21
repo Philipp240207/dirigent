@@ -15,7 +15,7 @@ export function buildLeakTimeline(demoCase: DemoCase, description: string) {
   };
 
   for (const unit of affected) {
-    record("affected", unit);
+    if (unit.risk === "check" || unit.risk === "source") record("affected", unit);
     if (unit.risk !== "high") continue;
 
     const residentUnit = building.units.find((flat) => flat.id === unit.unit_id);
@@ -32,7 +32,6 @@ export function buildLeakTimeline(demoCase: DemoCase, description: string) {
       phoneEnv: resident.phone_env,
       purpose,
     };
-    record("reasoning", { text: `Queuing a resident call to ${unit.unit_id}. ${purpose}` });
     residentCalls.push(call);
   }
 
