@@ -624,3 +624,7 @@ summary:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
 .job-summary dl div { display: grid; gap: .1rem; }
 .job-summary dt { font-size: .85rem; color: #5b6b62; }
 .job-summary dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+
+/* Visit scheduled: blue on the map and in the building list (green only when resolved) */
+.portfolio-map [data-state="scheduled"], .map-legend [data-state="scheduled"] { --map-state: #245be3; }
+.case-status[data-status="scheduled"] { color: #1d47b0; background: #e3ebff; }
