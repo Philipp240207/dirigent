@@ -14,7 +14,7 @@ const rooms: Record<string, { x: number; y: number; width: number }> = {
 }
 export const riskStyles: Record<string, { label: string; color: string }> = {
   confirmed: { label: "Reported or confirmed", color: "#ff3b30" },
-  high: { label: "High risk", color: "#ff9500" },
+  high: { label: "Being checked", color: "#ffcc00" },
   source: { label: "Possible source", color: "#ffcc00" },
   check: { label: "Possible damage, check", color: "#e0b000" },
   clear: { label: "Clear", color: "#34c759" },

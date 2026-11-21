@@ -610,3 +610,17 @@ summary:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
   .reported-ring { animation: reported-ring 1.8s ease-in-out infinite; }
 }
 @keyframes reported-ring { 50% { stroke-opacity: .35; } }
+
+/* Damage photo in the manager's case view */
+.case-photo { margin: 1rem 0; padding: .75rem; background: #fffdf8; border: 1px solid #e2ddd2; border-radius: 12px; }
+.case-photo img { display: block; width: 100%; max-height: 22rem; object-fit: cover; border-radius: 8px; }
+.case-photo figcaption { display: grid; gap: .2rem; margin-top: .6rem; }
+.partner-progress button { margin-top: .6rem; min-height: 44px; }
+
+/* Partner job summary with a large damage photo */
+.job-summary { margin-block: 1rem; padding: 1rem; background: #fffdf8; border: 1px solid #e2ddd2; border-radius: 12px; }
+.job-photo { display: block; width: 100%; max-height: 26rem; object-fit: cover; border-radius: 10px; margin-bottom: .9rem; }
+.job-summary dl { display: grid; gap: .55rem; margin: 0; }
+.job-summary dl div { display: grid; gap: .1rem; }
+.job-summary dt { font-size: .85rem; color: #5b6b62; }
+.job-summary dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }

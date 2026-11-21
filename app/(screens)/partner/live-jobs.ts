@@ -24,6 +24,11 @@ export function releasedJobs(partnerId: string) {
       availability: typeof shared?.tenant_availability === "string" ? shared.tenant_availability : "",
       assessment: typeof assessment === "string" ? assessment : typeof assessment?.damage === "string" ? assessment.damage : "",
       affectedUnits: affected,
+      photo: typeof shared?.damage_photo === "string" ? shared.damage_photo : "",
+      // Flats confirmed wet (reported flat first), for the job summary.
+      confirmedUnits: [...new Set([item.unit_id, ...history.flatMap(event => event.kind === "affected" &&
+        event.payload.risk === "confirmed" && typeof event.payload.unit_id === "string" && event.payload.unit_id !== "cellar"
+        ? [event.payload.unit_id] : [])])],
       address: typeof shared?.address === "string" ? shared.address : "",
       caretaker: typeof shared?.caretaker_contact === "string" ? shared.caretaker_contact : "",
       scope: typeof shared?.problem_description === "string" ? shared.problem_description : briefing,
