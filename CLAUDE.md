@@ -114,8 +114,9 @@ Emil's server keeps all state in memory and writes it to `data/state.json` (git-
 | `partner_job_proposed` | same fields as `partner_job`, plus `water_shutoff_units` for the plumber; visible only on `/dashboard` (the property manager). **May be written again for the same `partner_id`** while it is not approved (the photo arrived, a unit was confirmed): the latest one per `partner_id` wins, older ones are ignored |
 | `partner_job_approved` | `{partner_id}`, actor `property_manager` |
 | `partner_job` | `{partner_id, role, shared: {...}, withheld: [field names], briefing}` |
+| `slot_proposed` | `{partner_id, slot}`; appointment collected by the plumber phone agent, awaiting manager confirmation |
 | `slot_confirmed` | `{partner_id, slot}` |
-| `result` | `{partner_id, cost_eur, work_description}` |
+| `result` | `{partner_id, cost_eur, work_description}`; also written when the plumber phone agent collects a valid report |
 | `maintenance_log` | `{unit_id, partner_id, work_description, cost_eur}` |
 | `status_change` | `{status}` |
 | `connector_drafted` | `{connector}` |
@@ -133,9 +134,11 @@ A case has one or more partner jobs (plumber, electrician). The case is `resolve
 | `POST /api/cases` | `{unit_id, description, tenant_language}` | `{case_id}` immediately; the Dirigent runs afterwards |
 | `POST /api/cases/[id]/photo` | multipart field `file` | `{url, assessment}` |
 | `GET /api/uploads/[file]` | | the image |
-| `POST /api/cases/[id]/approve` | `{partner_id}` | `{ok: true}`; releases that partner's job exactly once |
+| `POST /api/cases/[id]/approve` | `{partner_id}` | `{ok: true}`; releases that partner's job exactly once and starts an outbound dispatch call for the plumber |
 | `GET /api/partner-job?case_id=&partner_id=` | | `{case, partner_id, role, shared, withheld, briefing}`; error before approval |
-| `POST /api/cases/[id]/slot` | `{partner_id, slot}` | `{ok: true}` |
+| `POST /api/cases/[id]/slot` | `{partner_id, slot}` | `{ok: true}`; manual fallback |
+| `POST /api/cases/[id]/confirm-slot` | `{partner_id}` | `{ok: true}`; confirms the latest phone proposal and sends appointment notices once |
+| `POST /api/cases/[id]/partner-call` | `{partner_id, mode: "report"}` | `{ok: true}`; starts the outbound report call for the approved plumber job in the background |
 | `POST /api/cases/[id]/result` | `{partner_id, cost_eur, work_description}` | `{ok: true}` |
 | `POST /api/cases/[id]/water-status` | `{status}`: `off` or `restored` | `{ok: true}`; the manager clicks it after the caretaker confirms the requested flats’ valves were closed or reopened. Writes `water_status_confirmed` and messages only those flats. `restored` only after the plumber's result; otherwise `409` |
 | `POST /api/connectors/draft` | `{partner_text}` | `{connector}` |

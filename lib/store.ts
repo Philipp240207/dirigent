@@ -256,6 +256,29 @@ export function approvePartnerJob(caseId: string, partnerId: string): "approved"
   return "approved";
 }
 
+export function proposePartnerSlot(caseId: string, partnerId: string, slot: string) {
+  const state = currentState();
+  if (!state.cases.some(({ id }) => id === caseId)) return "missing";
+  const events = state.events.filter((event) => event.case_id === caseId && belongsToPartner(event, partnerId));
+  if (!events.some((event) => event.kind === "partner_job") ||
+      events.some((event) => event.kind === "slot_confirmed" || event.kind === "result")) return "conflict";
+
+  const previous = events.findLast((event) => event.kind === "slot_proposed");
+  if (previous?.payload.slot === slot) return "ok";
+  addEvent({ case_id: caseId, kind: "slot_proposed", actor: "partner_call", payload: { partner_id: partnerId, slot } });
+  return "ok";
+}
+
+export function confirmPartnerSlot(caseId: string, partnerId: string) {
+  const state = currentState();
+  if (!state.cases.some(({ id }) => id === caseId)) return "missing";
+  const proposal = state.events.findLast((event) => event.case_id === caseId &&
+    event.kind === "slot_proposed" && belongsToPartner(event, partnerId));
+  const slot = proposal?.payload.slot;
+  if (typeof slot !== "string" || !slot.trim()) return "conflict";
+  return updatePartnerJob(caseId, partnerId, { kind: "slot_confirmed", payload: { slot } });
+}
+
 type PartnerUpdate =
   | { kind: "slot_confirmed"; payload: { slot: string } }
   | { kind: "result"; payload: { cost_eur: number; work_description: string } };
@@ -314,6 +337,9 @@ export function updatePartnerJob(caseId: string, partnerId: string, update: Part
   const recipients = new Set(building.units.filter((unit) => unitIds.has(unit.id)).map((unit) => unit.tenant_id));
   if (plumberAppointment) recipients.add(building.parties.caretaker.id);
   const partnerLabel = String(job.payload.role);
+  const reportingTenant = building.units.find((unit) => unit.id === demoCase.unit_id)?.tenant_id;
+  const appointment = update.kind === "slot_confirmed" && /^\d{1,2}:\d{2}$/.test(update.payload.slot)
+    ? `um ${update.payload.slot}` : update.kind === "slot_confirmed" ? update.payload.slot : "";
   for (const to of recipients) {
     updates.push({
       case_id: caseId, kind: "message", actor: "dirigent",
@@ -322,11 +348,13 @@ export function updatePartnerJob(caseId: string, partnerId: string, update: Part
         text: update.kind === "slot_confirmed"
           ? plumberAppointment
             ? to === building.parties.caretaker.id
-              ? `Bitte um ${update.payload.slot} vor Ort sein und ${[...unitIds].join(" und ")} für Sanitär Krause aufschließen.`
-              : `Der Installateur kommt um ${update.payload.slot}. Sie müssen nicht zu Hause sein, der Hausmeister schließt auf.`
+              ? `Bitte ${appointment} vor Ort sein und ${[...unitIds].join(" und ")} für Sanitär Krause aufschließen.`
+              : `Der Installateur kommt ${appointment}. Sie müssen nicht zu Hause sein, der Hausmeister schließt auf.`
             : `The ${partnerLabel} is scheduled for ${update.payload.slot}.`
           :
-          `The ${partnerLabel} has completed work for unit ${demoCase.unit_id}.`,
+          job.payload.role === "plumber" && to === reportingTenant
+            ? "Auftrag abgeschlossen."
+            : `The ${partnerLabel} has completed work for unit ${demoCase.unit_id}.`,
       },
     });
   }
