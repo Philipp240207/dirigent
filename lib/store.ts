@@ -115,7 +115,30 @@ function refreshPlumberJob(events: DemoEvent[], input: NewEvent): DemoEvent[] {
     shared.damage_assessment = input.payload.assessment;
   }
 
-  const payload = { ...proposal.payload, shared } as NewEvent["payload"];
+  const timeline = events.filter((event) => event.case_id === input.case_id);
+  const confirmedUnits = [...new Set([shared.unit_id, ...timeline
+    .filter((event) => event.kind === "affected" && event.payload.risk === "confirmed")
+    .map((event) => event.payload.unit_id)])].filter((unit): unit is string => typeof unit === "string");
+  const reported = timeline.find((event) => event.kind === "case_created")?.payload.description;
+  const damage = (shared.damage_assessment as { damage?: unknown } | undefined)?.damage;
+  const details = confirmedUnits.map((unit) => {
+    if (unit === shared.unit_id && [reported, damage].some((text) =>
+      typeof text === "string" && /lamp|light fixture|leuchte/i.test(text))) {
+      return `water next to the ceiling lamp in ${unit}`;
+    }
+    const tenant = building.units.find((flat) => flat.id === unit)?.tenant_id;
+    const summary = timeline.findLast((event) => event.kind === "call_ended" &&
+      event.payload.to_tenant_id === tenant && event.payload.damage_found === true)?.payload.summary;
+    if (typeof summary === "string" && /ceiling|decke|plafond/i.test(summary)) return `wet ceiling in ${unit}`;
+    return `water damage reported in ${unit}`;
+  });
+  const apartmentLabel = confirmedUnits.length === 1 ? "apartment" : "apartments";
+  const cellar = Array.isArray(shared.affected_units) && shared.affected_units.includes("cellar")
+    ? " Please also check the cellar." : "";
+  const briefing = `Water damage in ${apartmentLabel} ${confirmedUnits.join(" and ")}: ${details.join(", ")}.${cellar}`;
+  shared.problem_description = briefing;
+
+  const payload = { ...proposal.payload, shared, briefing } as NewEvent["payload"];
   if (confirmed && !job && typeof input.payload.unit_id === "string") {
     const units = Array.isArray(payload.water_shutoff_units) ? payload.water_shutoff_units : [shared.unit_id];
     payload.water_shutoff_units = [...new Set([...units, input.payload.unit_id])];
@@ -276,14 +299,14 @@ export function confirmPartnerSlot(caseId: string, partnerId: string) {
     event.kind === "slot_proposed" && belongsToPartner(event, partnerId));
   const slot = proposal?.payload.slot;
   if (typeof slot !== "string" || !slot.trim()) return "conflict";
-  return updatePartnerJob(caseId, partnerId, { kind: "slot_confirmed", payload: { slot } });
+  return updatePartnerJob(caseId, partnerId, { kind: "slot_confirmed", payload: { slot } }, true);
 }
 
 type PartnerUpdate =
   | { kind: "slot_confirmed"; payload: { slot: string } }
   | { kind: "result"; payload: { cost_eur: number; work_description: string } };
 
-export function updatePartnerJob(caseId: string, partnerId: string, update: PartnerUpdate) {
+export function updatePartnerJob(caseId: string, partnerId: string, update: PartnerUpdate, managerConfirmed = false) {
   const state = currentState();
   const demoCase = state.cases.find((item) => item.id === caseId);
   if (!demoCase) return "missing";
@@ -300,6 +323,10 @@ export function updatePartnerJob(caseId: string, partnerId: string, update: Part
 
   const scheduled = update.kind === "slot_confirmed";
   if (previous || partnerEvents.some((event) => event.kind === "result")) return "conflict";
+
+  if (scheduled && !managerConfirmed && partnerEvents.some((event) => event.kind === "slot_proposed")) {
+    return "conflict";
+  }
 
   const otherJobs = events.filter((event) => event.kind === "partner_job" && !belongsToPartner(event, partnerId));
   const otherJobOpen = otherJobs.some((other) => !events.some((event) =>
@@ -332,6 +359,14 @@ export function updatePartnerJob(caseId: string, partnerId: string, update: Part
       if (event.kind === "affected" && typeof event.payload.unit_id === "string") {
         unitIds.add(event.payload.unit_id);
       }
+    }
+  }
+  if (status === "resolved" && demoCase.status !== "resolved") {
+    for (const unitId of unitIds) {
+      updates.push({
+        case_id: caseId, kind: "affected", actor: "dirigent",
+        payload: { unit_id: unitId, risk: "clear" },
+      });
     }
   }
   const recipients = new Set(building.units.filter((unit) => unitIds.has(unit.id)).map((unit) => unit.tenant_id));

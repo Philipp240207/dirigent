@@ -79,7 +79,7 @@ export async function startResidentCall(call: ResidentCall, attempt = 1) {
         duration_s: duration, summary,
       },
     }, openAiEur);
-    if (damageFound !== null) {
+    if (damageFound !== null && getState().cases.some(({ id, status }) => id === call.caseId && status !== "resolved")) {
       record({
         case_id: call.caseId, actor: "dirigent", kind: "affected",
         payload: { unit_id: call.unitId, risk: damageFound ? "confirmed" : "clear" },

@@ -36,8 +36,8 @@ export async function startPartnerCall(caseId: string, partnerId: string, mode: 
 
   const headers = { "xi-api-key": apiKey, "Content-Type": "application/json" };
   const shared = job.payload.shared as Record<string, unknown> | undefined;
-  const briefing = [job.payload.briefing, shared?.problem_description, shared?.address,
-    shared?.caretaker_contact].filter((value) => typeof value === "string").join(" ");
+  const briefing = [...new Set([job.payload.briefing, shared?.problem_description, shared?.address,
+    shared?.caretaker_contact].filter((value) => typeof value === "string"))].join(" ");
   activeCalls.add(callKey);
   try {
     const response = await fetch(`${apiBase}/twilio/outbound-call`, {
