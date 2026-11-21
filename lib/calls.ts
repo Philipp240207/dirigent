@@ -21,8 +21,9 @@ export type ResidentCall = {
   purpose: string;
 };
 
-export function isCallDryRun() {
-  return process.env.CALLS_DRY_RUN?.trim().toLowerCase() !== "false";
+export function isCallDryRun(kind: "resident" | "partner" = "resident") {
+  const specific = kind === "resident" ? process.env.RESIDENT_CALLS_DRY_RUN : process.env.PARTNER_CALLS_DRY_RUN;
+  return (specific?.trim() || process.env.CALLS_DRY_RUN)?.trim().toLowerCase() !== "false";
 }
 
 function callStarted(call: ResidentCall, attempt: number, dryRun: boolean): NewEvent {

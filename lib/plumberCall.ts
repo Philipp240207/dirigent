@@ -21,7 +21,7 @@ export async function startPartnerCall(caseId: string, partnerId: string, mode: 
       addEvent({ case_id: caseId, kind: "reasoning", actor: "dirigent", payload: { text } });
     }
   };
-  if (isCallDryRun()) {
+  if (isCallDryRun("partner")) {
     note(`Dry run: the released plumber job would trigger an outbound ${mode} call.`);
     return;
   }
@@ -50,6 +50,7 @@ export async function startPartnerCall(caseId: string, partnerId: string, mode: 
         to_number: number,
         conversation_initiation_client_data: {
           dynamic_variables: { case_id: caseId, mode, briefing },
+          conversation_config_override: { agent: { language: "en" } },
         },
       }),
     });
