@@ -116,9 +116,11 @@ function partnerProgress(state: State, caseId: string, partnerId: string) {
   const own = state.events.filter(event => event.case_id === caseId &&
     (event.payload.partner_id === partnerId || (partnerId === "plumber_krause" && event.payload.partner_id == null)))
   const slot = own.findLast(event => event.kind === "slot_confirmed")?.payload.slot
+  const proposed = own.findLast(event => event.kind === "slot_proposed")?.payload.slot
   const result = own.findLast(event => event.kind === "result")?.payload
   return {
     slot: typeof slot === "string" ? slot : "",
+    proposed: typeof proposed === "string" ? proposed : "",
     cost: typeof result?.cost_eur === "number" ? result.cost_eur : null,
     done: Boolean(result),
   }
@@ -244,6 +246,29 @@ export function LiveDashboard() {
       if (!result.ok) setError(result.status === 409 ? "The case changed. Check the water status before retrying." : "Could not confirm the water status. Try again.")
     } catch {
       setError("Could not confirm the water status. Check the case before retrying.")
+    } finally {
+      sending.current = false
+      setBusy("")
+    }
+  }
+
+  // Confirms the slot the partner proposed on the phone (Emil's confirm-slot route).
+  async function confirmSlot(caseId: string, partnerId: string) {
+    if (sending.current) return
+    sending.current = true
+    setBusy(`confirm:${caseId}:${partnerId}`)
+    setError("")
+    try {
+      const response = await fetch(`/api/cases/${encodeURIComponent(caseId)}/confirm-slot`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ partner_id: partnerId }),
+      })
+      if (response.status === 404) setError("Confirming the appointment is not available on this server yet.")
+      else if (!response.ok) setError("The appointment could not be confirmed. Check the case and try again.")
+      await refresh()
+    } catch {
+      setError("The appointment could not be confirmed. Check the connection and try again.")
     } finally {
       sending.current = false
       setBusy("")
@@ -524,8 +549,14 @@ export function LiveDashboard() {
                     {released.map(partnerId => {
                       const progress = partnerProgress(state!, current.id, partnerId)
                       const name = partnerName(partnerId)
-                      return <div className="partner-progress" key={partnerId} data-step={progress.done ? "done" : progress.slot ? "scheduled" : "calling"}>
+                      return <div className="partner-progress" key={partnerId} data-step={progress.done ? "done" : progress.slot ? "scheduled" : progress.proposed ? "proposed" : "calling"}>
                         {progress.done ? <p><strong>{name}</strong> reported the repair complete{progress.cost !== null ? ` · €${progress.cost}` : ""}.</p>
+                          : !progress.slot && progress.proposed ? <>
+                            <p><strong>Appointment proposed: {progress.proposed}</strong> · {name}</p>
+                            <button type="button" className="case-action" disabled={Boolean(busy) || offline} onClick={() => confirmSlot(current.id, partnerId)}>
+                              {busy === `confirm:${current.id}:${partnerId}` ? "Confirming…" : "Confirm appointment"}
+                            </button>
+                          </>
                           : progress.slot ? <>
                             <p><strong>Appointment: {progress.slot}</strong> · {name}</p>
                             <p>The caretaker lets them in. Residents and the caretaker were notified.</p>

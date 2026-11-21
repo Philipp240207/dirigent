@@ -1,10 +1,8 @@
 import { releasedJobs } from "../live-jobs"
 import { LiveRefresh } from "../../live-refresh"
 import { WorkForm } from "./work-form"
-import { IncomingCall } from "./incoming-call"
 import { notFound } from "next/navigation"
 import { getState } from "@/lib/store"
-import { isCallDryRun } from "@/lib/calls"
 import { electricJob, jobs } from "../jobs"
 import { PartnerJob } from "./partner-job"
 import { isPartnerId, partnerName } from "../../../../client/partners"
@@ -19,41 +17,34 @@ export default async function PartnerPage({ params, searchParams }: { params: Pr
     if (!isPartnerId(partner)) notFound()
     const job = releasedJobs(partner).find(item => item.id === caseId)
     if (!job) return <section className="report-card"><LiveRefresh /><h1>Job unavailable</h1><p>Only approved jobs appear here.</p></section>
-    const scheduled = job.status === "scheduled"
     const completed = job.status === "resolved"
-    const agentId = process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_PARTNER?.trim()
-    // The server calls the plumber's phone to agree on the visit (lib/plumberCall.ts) when it is
-    // configured; the browser call is then only used to report the result after the visit.
-    const phoneDispatch = partner === "plumber_krause" && !isCallDryRun() &&
-      Boolean(process.env.DEMO_PHONE_PLUMBER?.trim() && process.env.ELEVENLABS_AGENT_PARTNER_PHONE?.trim() &&
-        process.env.ELEVENLABS_PARTNER_PHONE_NUMBER_ID?.trim())
-    const notes = getState().events.filter(event => event.case_id === job.id && event.kind === "reasoning" &&
-      typeof event.payload.text === "string" && /plumber call/i.test(event.payload.text))
-    const phoneProblem = notes.some(event => /skipped|did not save|could not be verified/i.test(String(event.payload.text)))
-    const calling = phoneDispatch && !scheduled && !completed
-    const street = job.address.split(",")[0].replace(/stra(ss|ß)e\b/i, "Str.")
-    const briefing = [job.scope, job.address, job.caretaker && `Access: ${job.caretaker}.`].filter(Boolean).join(" ")
     const title = job.role === "electrician" ? "Ceiling lamp inspection" : "Water leak"
+    // Timeline from the partner's own events (times in Berlin time from the event fields).
+    const own = getState().events.filter(event => event.case_id === job.id &&
+      (event.payload.partner_id === partner || (partner === "plumber_krause" && event.payload.partner_id == null)))
+    const released = own.find(event => event.kind === "partner_job")
+    const proposed = own.findLast(event => event.kind === "slot_proposed")
+    const confirmed = own.findLast(event => event.kind === "slot_confirmed")
+    const result = own.findLast(event => event.kind === "result")
+    const proposedSlot = proposed?.payload.slot ?? confirmed?.payload.slot
+    const clock = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit" })
+    const at = (value?: string) => value && Number.isFinite(Date.parse(value)) ? clock.format(Date.parse(value)) : ""
+    const cost = typeof result?.payload.cost_eur === "number" ? result.payload.cost_eur : null
+    const steps = [
+      { label: "Called by property management", done: Boolean(released), time: at(released?.at) },
+      { label: typeof proposedSlot === "string" ? `Appointment proposed: ${proposedSlot}` : "Appointment proposed", done: typeof proposedSlot === "string", time: at((proposed ?? confirmed)?.at) },
+      { label: "Confirmed", done: Boolean(confirmed), time: at(confirmed?.at) },
+      { label: result ? `Done: ${cost !== null ? `${cost} EUR` : ""}${typeof result.payload.work_description === "string" ? `, ${result.payload.work_description}` : ""}` : "Done", done: Boolean(result), time: at(result?.at) },
+    ]
+    const current = steps.findLastIndex(step => step.done)
     return <>
+      {!completed && <LiveRefresh />}
       <div className="heading management-heading"><div><h1>{title}</h1><p>{partnerName(partner)}</p></div></div>
       <div className="tenant-location" aria-label="Job location">
         <img src={buildingPortrait(scenarioBuilding)} width="72" height="76" alt="" />
         <div><strong>{scenarioBuilding.address}</strong><p>{scenarioBuilding.city}</p></div>
         <span>Apartment {job.unit}</span>
       </div>
-      {calling && <section className="incoming-call phone-dispatch" data-state={phoneProblem ? "declined" : "active"} aria-live="polite">
-        <LiveRefresh />
-        {phoneProblem ? <>
-          <p className="incoming-label">Anruf nicht abgeschlossen</p>
-          <p>Den Termin bitte unten eintragen.</p>
-        </> : <>
-          <p className="incoming-label">Telefon</p>
-          <p className="incoming-caller">Dirigent ruft Sanitär Krause an</p>
-          <p className="incoming-topic">Termin wird am Telefon abgestimmt. Er erscheint hier automatisch.</p>
-        </>}
-      </section>}
-      {agentId && !calling && <IncomingCall key={`${job.id}/${partner}`} agentId={agentId} caseId={job.id} partnerId={partner} completed={completed}
-        mode={scheduled ? "report" : "dispatch"} caller={`Hausverwaltung ${street || "Dirigent"}`} fallbackBriefing={briefing} />}
       <section className="job-summary" aria-label="Job details">
         {job.photo && <img className="job-photo" src={job.photo} alt={`Damage photo from apartment ${job.unit}`} />}
         <dl>
@@ -64,26 +55,23 @@ export default async function PartnerPage({ params, searchParams }: { params: Pr
           {job.caretaker && <div><dt>Caretaker</dt><dd>{job.caretaker}</dd></div>}
         </dl>
       </section>
-      <section className="report-card" aria-labelledby="job-heading">
-        <h2 id="job-heading">{completed ? "Work reported" : scheduled ? "Report your work" : "Confirm your visit"}</h2>
-        {!scheduled && !completed && job.scope && <p>{job.scope}</p>}
-        {scheduled && <p>Visit confirmed for <strong>{job.slot}</strong>. Report the result once the work is complete.</p>}
-        {completed ? <div className="partner-result">
-          {job.cost !== null && <strong>Reported charge: €{job.cost}</strong>}
-          <p>{job.work}</p>
-        </div> : <WorkForm key={job.id + job.status} id={job.id} partnerId={partner} schedule={!scheduled} />}
-        <details className="job-disclosure">
-          <summary>Work order details</summary>
-          <p>{job.scope}</p>
-          <dl>
-            {job.caretaker && <div><dt>Access</dt><dd>{job.caretaker}</dd></div>}
-            {job.slot && <div><dt>Appointment</dt><dd>{job.slot}</dd></div>}
-            {job.assessment && <div><dt>Damage assessment</dt><dd>{job.assessment}</dd></div>}
-            {job.availability && <div><dt>Tenant availability</dt><dd>{job.availability}</dd></div>}
-            {job.affectedUnits.length > 0 && <div><dt>Affected units</dt><dd>{job.affectedUnits.join(", ")}</dd></div>}
-          </dl>
-        </details>
+      <section className="tracking-progress partner-timeline" aria-labelledby="partner-timeline-heading">
+        <h2 id="partner-timeline-heading">Job timeline</h2>
+        <ol>{steps.map((step, index) => (
+          <li key={index} data-step={step.done ? (index === current ? "current" : "done") : "upcoming"} aria-current={index === current ? "step" : undefined}>
+            <span className="tracking-dot" aria-hidden="true">{step.done && (
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="m3 7 2.5 2.5L11 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}</span>
+            <span>{step.label}{step.time && <small>{step.time}</small>}</span>
+          </li>
+        ))}</ol>
       </section>
+      {!completed && <details className="job-disclosure manual-entry">
+        <summary>Enter manually (only if the phone call fails)</summary>
+        <WorkForm key={job.id + job.status} id={job.id} partnerId={partner} schedule={!confirmed} />
+      </details>}
     </>
   }
   if (partner !== "plumber_krause" && partner !== "electrician_schmitz") notFound()
