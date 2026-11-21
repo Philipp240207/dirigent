@@ -16,15 +16,14 @@ Technik steht in `CLAUDE.md`. Hier steht nur: **wer, was, bis wann.**
 | **22:00 bis 22:30** | **Zusammenstecken auf dem Demo-Laptop:** echter Anruf auf Emils Handy (1. Mal nicht rangehen, 2. Mal rangehen), Freigabe, Installateur, "fertig, 340 €" |
 | 22:30 bis 24:00 | Lücken schließen, jede Zeile der Szenario-Tabelle (CLAUDE.md Abschnitt 2) einmal testen |
 | **24:00** | **Gate 1:** der ganze Fall ohne Elektriker 3-mal fehlerfrei |
-| 00:00 bis 03:00 | Stufe 2: Elektriker live anbinden, Karte + Liste, Kostenzähler, Kontext-Panel |
-| **03:00** | **Feature Freeze**, bis 03:30 Fehler beheben, alles in `main` |
+| ab 00:00 bis zum Dreh | Stufe 2 und neue Features erlaubt (Elektriker live, Karte + Liste, Kostenzähler, Kontext-Panel). Gedreht wird erst, wenn auf `main` der ganze Fall 3-mal hintereinander durchläuft |
 | 01:30 bis 03:00 | Julian schläft |
 | 03:30 bis 05:00 | Emil und Philipp schlafen, Julian ist wach |
 | 05:00 bis 07:30 | Dreh auf dem Demo-Laptop (`RETRY_DELAY_MINUTES=1`) |
 | 07:30 bis 09:30 | Schnitt, README, Zip |
 | **bis 10:00** | **Hochgeladen** (Deadline 10:30) |
 
-Team-Checks (max. 10 Minuten): **22:00, 24:00, 03:00, 07:30**. Wer 45 Minuten an einem Fehler hängt, meldet sich sofort.
+Team-Checks (max. 10 Minuten): **22:00, 24:00, vor dem Dreh, 07:30**. Wer 45 Minuten an einem Fehler hängt, meldet sich sofort.
 
 ---
 
@@ -44,7 +43,7 @@ Team-Checks (max. 10 Minuten): **22:00, 24:00, 03:00, 07:30**. Wer 45 Minuten an
 - [ ] Schadensfoto: Wasserfleck an der Decke **neben einer Deckenlampe** (selbst fotografieren oder GPT-Image)
 
 **22:00 bis 01:30:** Zusammenstecken (du spielst Daniel), Gate 1 abnehmen, Rohaufnahmen sichern, Kostenrechnung mit echten Zahlen. **Schlafen 01:30 bis 03:00.**
-**03:00 bis 05:00:** Freeze abnehmen, Titel- und Kapitelkarten, Untertitel-Texte, README-Text mit kleiner Tabelle "echt / simuliert" (CLAUDE.md Abschnitt 12). Demo-Laptop: `DEMO_NOW=2026-11-20T13:40:00+01:00` in `.env.local`, Dreh mit `npm run build && npm start`.
+**03:00 bis 05:00:** Titel- und Kapitelkarten, Untertitel-Texte, README-Text mit kleiner Tabelle "echt / simuliert" (CLAUDE.md Abschnitt 12). Demo-Laptop: `DEMO_NOW=2026-11-20T13:40:00+01:00` in `.env.local`, Dreh mit `npm run build && npm start`.
 **05:00 bis 10:00:** Regie beim Dreh, Schnitt (unter 2:30), hochladen.
 
 ---

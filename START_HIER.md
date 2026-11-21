@@ -26,7 +26,7 @@ Hey Emil, hey Philipp, das ist unser komplettes Paket (Stand 20:00, nach dem Ges
 
 ## Drei Regeln
 - Nur Dateien in deinem eigenen Bereich ändern (`CLAUDE.md` Abschnitt 4).
-- **22:00 Zusammenstecken**, **24:00 Gate 1**, **03:00 Feature Freeze**.
+- **22:00 Zusammenstecken**, **24:00 Gate 1**, neue Features bis zum Dreh erlaubt, gedreht wird, wenn der ganze Fall 3-mal durchläuft.
 - **Samstag bis 10:00 hochladen** (Video max. 2:30 + Code-Zip). Deadline 10:30.
 
 Erster Satz an Codex oder Claude Code im Repo: "Lies CLAUDE.md und docs/ROLLEN.md. Ich bin [Name]. Was ist meine nächste Aufgabe?"

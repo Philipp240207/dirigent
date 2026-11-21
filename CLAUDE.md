@@ -232,8 +232,7 @@ Scale for the video: 100,000 flats → 150,000 cases → 750,000 staff hours per
 | until 22:00 | Emil: retry, outcome reading, approval per partner. Philipp: map + list, cross-section, review card, partner + tracking page. Julian: agents done, connector spec, Elektro Schmitz text, video script |
 | **22:00 Integration (30 min)** | real calls on the demo laptop: first call not answered, retry answered; approval; plumber flow; "done, 340 EUR" |
 | **24:00 Gate 1** | the whole case (section 2, without the electrician) runs 3 times in a row; every row of the scenario table checked once |
-| 00:00 to 03:00 | Stage 2 |
-| **03:00 Feature freeze** | bug fixes and recording only |
+| 00:00 until recording | Stage 2 and new features are allowed. Recording starts only when the whole case runs on `main` 3 times in a row |
 | 05:00 to 07:30 | recording on the demo laptop |
 | 07:30 to 09:30 | edit, README, zip |
 | **by 10:00** | uploaded (deadline 10:30) |
@@ -241,7 +240,7 @@ Scale for the video: 100,000 flats → 150,000 cases → 750,000 staff hours per
 ## 9. Scope
 
 **Stage 1, MUSS (Gate 1):** tenant page + `tenant_intake`, Dirigent with graph walk (source, high, check), call to 2.1 with no-answer → message → retry → answered → confirmed, photo + vision, manager approval, plumber partner page with slot and result, maintenance log, messages, building cross-section + reasoning + outbox, tracking page, reset, connector spec doc, apartment-level shutoff and restoration after operator confirmation, store and timers on `globalThis`, demo clock, ISO retry time, latest proposal per partner on the review card.
-**Stage 2, SOLL (00:00 to 03:00), in this order:** live electrician plug-in in the same case (deliverable B), map + list overview, touchpoint counter + cost counter, connector checks + three connector cards, context pass panel with blurring, tool chips.
+**Stage 2, SOLL (from 00:00 until recording), in this order:** live electrician plug-in in the same case (deliverable B), map + list overview, touchpoint counter + cost counter, connector checks + three connector cards, context pass panel with blurring, tool chips.
 **Stage 3, only if all done before 02:00:** owner approval above 500 EUR, move-in with internet (ISP example), storm night.
 **Do NOT build:** hosting, database service, map service, WhatsApp, inbound phone calls, logins, a real centrix API, payments, a building editor, a mobile app.
 
