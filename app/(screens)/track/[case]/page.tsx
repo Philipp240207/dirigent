@@ -29,7 +29,9 @@ export default async function TrackPage({ params }: { params: Promise<{ case: st
     // A neighbour check counts as done once someone answered, or once the case moved on without them.
     const neighboursChecked = approved || history.some(event => event.kind === "call_ended" && event.payload.outcome === "answered")
     const done = [true, neighboursChecked, approved, scheduled, repaired]
-    const steps = ["Report received", "Neighbours checked", "Repair approved", "Appointment confirmed", "Repair complete"]
+    const firstSlot = partners.map(partnerId => latestFor(partnerId, "slot_confirmed")?.slot).find((slot): slot is string => typeof slot === "string")
+    const steps = ["Report received", "Neighbours checked", "Repair approved",
+      scheduled && firstSlot ? `Appointment confirmed: ${firstSlot}` : "Appointment confirmed", "Job completed"]
     // The last step reached in order; a later step never shows as reached before an earlier one.
     const current = done.indexOf(false) === -1 ? steps.length - 1 : done.indexOf(false) - 1
     const waiting = partners.filter(partnerId => !latestFor(partnerId, "slot_confirmed")).map(partnerName)
@@ -38,7 +40,7 @@ export default async function TrackPage({ params }: { params: Promise<{ case: st
       "Your property manager is reviewing the repair.",
       `${waiting.join(" and ")} will confirm a visit.${slots.length ? ` Confirmed: ${slots.join(", ")}.` : ""}`,
       `Visit confirmed: ${slots.join(", ")}.`,
-      "The repair has been reported complete.",
+      "The repair company has finished the job.",
     ]
     const water = history.findLast(event => event.kind === "water_status_confirmed")?.payload.status
     const waterNote = water === "off" ? "The water on your riser is off until the repair is finished."
