@@ -250,6 +250,29 @@ export function LiveDashboard() {
     }
   }
 
+  // Calls the partner again after the visit to collect the result (Emil's partner-call route).
+  async function askForUpdate(caseId: string, partnerId: string) {
+    if (sending.current) return
+    sending.current = true
+    setBusy(`update:${caseId}:${partnerId}`)
+    setError("")
+    try {
+      const response = await fetch(`/api/cases/${encodeURIComponent(caseId)}/partner-call`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ partner_id: partnerId, mode: "report" }),
+      })
+      if (response.status === 404) setError("Asking for an update is not available on this server yet.")
+      else if (!response.ok) setError("The update call could not be started. Try again.")
+      await refresh()
+    } catch {
+      setError("The update call could not be started. Check the connection and try again.")
+    } finally {
+      sending.current = false
+      setBusy("")
+    }
+  }
+
   async function refresh() {
     try {
       const updated = await loadState()
@@ -315,7 +338,7 @@ export function LiveDashboard() {
       ? state === "attention" ? `Water damage · ${labels[status as keyof typeof labels]}` : labels[status as keyof typeof labels]
       : "No open cases"
     return { building, status: label, state, needsApproval }
-  })
+  }).sort((a, b) => Number(b.state === "attention") - Number(a.state === "attention"))
   const apartmentCount = buildings.reduce((count, building) => count + buildingUnits(building).length, 0)
 
   function openOverview(view: Overview) {
@@ -504,8 +527,11 @@ export function LiveDashboard() {
                       return <div className="partner-progress" key={partnerId} data-step={progress.done ? "done" : progress.slot ? "scheduled" : "calling"}>
                         {progress.done ? <p><strong>{name}</strong> reported the repair complete{progress.cost !== null ? ` · €${progress.cost}` : ""}.</p>
                           : progress.slot ? <>
-                            <p><strong>{name}</strong> visits at <strong>{progress.slot}</strong>.</p>
+                            <p><strong>Appointment: {progress.slot}</strong> · {name}</p>
                             <p>The caretaker lets them in. Residents and the caretaker were notified.</p>
+                            <button type="button" className="secondary" disabled={Boolean(busy) || offline} onClick={() => askForUpdate(current.id, partnerId)}>
+                              {busy === `update:${current.id}:${partnerId}` ? "Calling…" : `Ask ${partnerId === "plumber_krause" ? "plumber" : name} for update`}
+                            </button>
                           </>
                           : <>
                             {(() => {
@@ -514,7 +540,7 @@ export function LiveDashboard() {
                               const onPhone = partnerId === "plumber_krause" && notes.some(event => /call started/i.test(String(event.payload.text)))
                               return problem
                                 ? <p role="alert">The phone call to <strong>{name}</strong> did not confirm a visit. Open their page to enter it.</p>
-                                : <p>Dirigent is calling <strong>{name}</strong>{onPhone ? " on the phone" : ""} to agree on a visit.</p>
+                                : <p><strong>Calling {partnerId === "plumber_krause" ? "plumber" : name}…</strong> {name}{onPhone ? " is being called on the phone" : " is asked"} to agree on a visit.</p>
                             })()}
                             <Link className="case-action partner-call-link" href={`/partner/${current.id}?partner=${encodeURIComponent(partnerId)}`}>Open {name}’s phone</Link>
                           </>}
@@ -522,6 +548,20 @@ export function LiveDashboard() {
                     })}
                   </>}
                 </section>
+                {current && (() => {
+                  const photo = events.findLast(event => event.kind === "photo" && typeof event.payload.url === "string" && event.payload.url)
+                  if (!photo) return null
+                  const assessment = photo.payload.assessment as { damage?: unknown; severity?: unknown; electrics?: unknown } | undefined
+                  return <figure className="case-photo">
+                    <img src={String(photo.payload.url)} alt={`Damage photo from apartment ${current.unit_id}`} />
+                    <figcaption>
+                      <strong>Photo from apartment {current.unit_id}</strong>
+                      {typeof assessment?.damage === "string" && <span>{assessment.damage}</span>}
+                      {(typeof assessment?.severity === "number" || typeof assessment?.severity === "string") && <span>Severity: {String(assessment.severity)}</span>}
+                      {assessment?.electrics === true && <span>Electrics near the water</span>}
+                    </figcaption>
+                  </figure>
+                })()}
                 {current && <>
                   <LiveIncident unit={current.unit_id} resolved={current.status === "resolved"} events={events} section={false}
                     onWaterStatus={water => confirmWater(current.id, water)} waterBusy={busy === `water:${current.id}`} disabled={Boolean(busy) || offline} />

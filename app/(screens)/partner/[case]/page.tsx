@@ -54,6 +54,16 @@ export default async function PartnerPage({ params, searchParams }: { params: Pr
       </section>}
       {agentId && !calling && <IncomingCall key={`${job.id}/${partner}`} agentId={agentId} caseId={job.id} partnerId={partner} completed={completed}
         mode={scheduled ? "report" : "dispatch"} caller={`Hausverwaltung ${street || "Dirigent"}`} fallbackBriefing={briefing} />}
+      <section className="job-summary" aria-label="Job details">
+        {job.photo && <img className="job-photo" src={job.photo} alt={`Damage photo from apartment ${job.unit}`} />}
+        <dl>
+          <div><dt>Address</dt><dd>{job.address}</dd></div>
+          <div><dt>Apartment</dt><dd>{job.unit}{job.confirmedUnits.length > 1 && <>, also {job.confirmedUnits.filter(unit => unit !== job.unit).join(", ")}</>}</dd></div>
+          {job.scope && <div><dt>Problem</dt><dd>{job.scope}</dd></div>}
+          {job.assessment && <div><dt>Photo assessment</dt><dd>{job.assessment}</dd></div>}
+          {job.caretaker && <div><dt>Caretaker</dt><dd>{job.caretaker}</dd></div>}
+        </dl>
+      </section>
       <section className="report-card" aria-labelledby="job-heading">
         <h2 id="job-heading">{completed ? "Work reported" : scheduled ? "Report your work" : "Confirm your visit"}</h2>
         {!scheduled && !completed && job.scope && <p>{job.scope}</p>}
